@@ -22,6 +22,7 @@ from ._dataclass import CachedTrack, MusicTrack, PlatformTracks, TrackInfo
 from ._filters import Filter
 from .buttons import SupportButton, control_buttons
 from ._save_cookies import save_all_cookies
+from ._language import language_manager
 
 __all__ = [
     "is_admin",
@@ -45,4 +46,5 @@ __all__ = [
     "PlatformTracks",
     "SupportButton",
     "Filter",
+    "language_manager",
 ]
