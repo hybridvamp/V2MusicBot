@@ -16,14 +16,19 @@ from ..core import DownloaderWrapper
 async def callback_query(c: Client, message: types.UpdateNewCallbackQuery) -> None:
     """Handle all playback control callback queries (skip, stop, pause, resume)."""
     data = message.payload.data.decode()
-    user_id = message.sender_user_id
-
+    
     # Retrieve message and user info with error handling
     get_msg = await message.getMessage()
     if isinstance(get_msg, types.Error):
         c.logger.warning(f"Failed to get message: {get_msg.message}")
         return None
 
+    # Get user ID from the message
+    if isinstance(get_msg.sender_id, types.MessageSenderUser):
+        user_id = get_msg.sender_id.user_id
+    else:
+        c.logger.warning("Invalid sender type for callback query")
+        return None
     user = await c.getUser(user_id)
     if isinstance(user, types.Error):
         c.logger.warning(f"Failed to get user info: {user.message}")
