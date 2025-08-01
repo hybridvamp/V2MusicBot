@@ -13,6 +13,7 @@ from TgMusic.core import (
     Filter,
     config,
     db,
+    language_manager,
 )
 from TgMusic.core.admins import load_admin_cache
 from TgMusic.modules.utils import sec_to_min
@@ -26,49 +27,14 @@ async def privacy_handler(c: Client, message: types.Message):
     """
     Handle the /privacy command to display privacy policy.
     """
-    bot_name = c.me.first_name
-    text = f"""
-    <u><b>Privacy Policy for {bot_name}:</b></u>
-
-<b>1. Data Storage:</b>
-- {bot_name} does not store any personal data on the user's device.
-- We do not collect or store any data about your device or personal browsing activity.
-
-<b>2. What We Collect:</b>
-- We only collect your Telegram <b>user ID</b> and <b>chat ID</b> to provide the music streaming and interaction functionalities of the bot.
-- No personal data such as your name, phone number, or location is collected.
-
-<b>3. Data Usage:</b>
-- The collected data (Telegram UserID, ChatID) is used strictly to provide the music streaming and interaction functionalities of the bot.
-- We do not use this data for any marketing or commercial purposes.
-
-<b>4. Data Sharing:</b>
-- We do not share any of your personal or chat data with any third parties, organizations, or individuals.
-- No sensitive data is sold, rented, or traded to any outside entities.
-
-<b>5. Data Security:</b>
-- We take reasonable security measures to protect the data we collect. This includes standard practices like encryption and safe storage.
-- However, we cannot guarantee the absolute security of your data, as no online service is 100% secure.
-
-<b>6. Cookies and Tracking:</b>
-- {bot_name} does not use cookies or similar tracking technologies to collect personal information or track your behavior.
-
-<b>7. Third-Party Services:</b>
-- {bot_name} does not integrate with any third-party services that collect or process your personal information, aside from Telegram's own infrastructure.
-
-<b>8. Your Rights:</b>
-- You have the right to request the deletion of your data. Since we only store your Telegram ID and chat ID temporarily to function properly, these can be removed upon request.
-- You may also revoke access to the bot at any time by removing or blocking it from your chats.
-
-<b>9. Changes to the Privacy Policy:</b>
-- We may update this privacy policy from time to time. Any changes will be communicated through updates within the bot.
-
-<b>10. Contact Us:</b>
-If you have any questions or concerns about our privacy policy, feel free to contact us at <a href="https://t.me/GuardxSupport">Support Group</a>
-
-──────────────────
-<b>Note:</b> This privacy policy is in place to help you understand how your data is handled and to ensure that your experience with {bot_name} is safe and respectful.
-    """
+    user_id = message.from_id
+    chat_id = message.chat_id
+    user_lang = await language_manager.get_language(user_id, chat_id)
+    
+    privacy_title = language_manager.get_text("privacy_title", user_lang)
+    privacy_content = language_manager.get_text("privacy_content", user_lang)
+    
+    text = f"{privacy_title}\n\n{privacy_content}"
 
     reply = await message.reply_text(text)
     if isinstance(reply, types.Error):
@@ -84,9 +50,11 @@ async def reload_cmd(c: Client, message: types.Message) -> None:
     """Handle the /reload command to reload the bot."""
     user_id = message.from_id
     chat_id = message.chat_id
+    user_lang = await language_manager.get_language(user_id, chat_id)
+    
     if chat_id > 0:
         reply = await message.reply_text(
-            "🚫 This command can only be used in SuperGroups only."
+            language_manager.get_text("error_admin_required", user_lang)
         )
         if isinstance(reply, types.Error):
             c.logger.warning(f"Error sending message: {reply} for chat {chat_id}")
@@ -96,14 +64,14 @@ async def reload_cmd(c: Client, message: types.Message) -> None:
         last_used_time = rate_limit_cache[user_id]
         time_remaining = 180 - (datetime.now() - last_used_time).total_seconds()
         reply = await message.reply_text(
-            f"🚫 You can use this command again in ({sec_to_min(time_remaining)} Min)"
+            language_manager.get_text("error_generic", user_lang) + f" ({sec_to_min(time_remaining)} Min)"
         )
         if isinstance(reply, types.Error):
             c.logger.warning(f"Error sending message: {reply} for chat {chat_id}")
         return None
 
     rate_limit_cache[user_id] = datetime.now()
-    reply = await message.reply_text("🔄 Reloading...")
+    reply = await message.reply_text(language_manager.get_text("system_starting", user_lang))
     if isinstance(reply, types.Error):
         c.logger.warning(f"Error sending message: {reply} for chat {chat_id}")
         return None
@@ -153,8 +121,9 @@ async def ping_cmd(client: Client, message: types.Message) -> None:
     cpu_info = f"{cpu_usage:.2f}%"
     uptime = datetime.now() - StartTime
     uptime_str = str(uptime).split(".")[0]
+    user_lang = await language_manager.get_language(message.from_id, message.chat_id)
     start_time = time.monotonic()
-    reply_msg = await message.reply_text("🏓 Pinging...")
+    reply_msg = await message.reply_text(language_manager.get_text("btn_play", user_lang) + "...")
     latency = (time.monotonic() - start_time) * 1000  # ms
     response = (
         "📊 <b>System Performance Metrics</b>\n\n"
@@ -177,7 +146,8 @@ async def performance_cmd(client: Client, message: types.Message) -> None:
     if message.from_id not in config.DEVS:
         return
     
-    reply_msg = await message.reply_text("📊 Gathering performance metrics...")
+    user_lang = await language_manager.get_language(message.from_id, message.chat_id)
+    reply_msg = await message.reply_text(language_manager.get_text("performance_title", user_lang))
     
     try:
         # Database statistics
@@ -212,35 +182,35 @@ async def performance_cmd(client: Client, message: types.Message) -> None:
             call_ping_info = "N/A"
         
         response = f"""
-🔥 **TgMusicBot Performance Dashboard**
+🔥 <b>TgMusicBot Performance Dashboard</b>
 
-⏱️ **System Info:**
-• Uptime: `{uptime_str}`
-• CPU Usage: `{cpu_percent:.1f}%`
-• Memory: `{memory.percent:.1f}%` ({memory.used // (1024**3):.1f}GB / {memory.total // (1024**3):.1f}GB)
-• Disk: `{disk.percent:.1f}%` ({disk.used // (1024**3):.1f}GB / {disk.total // (1024**3):.1f}GB)
+⏱️ <b>System Info:</b>
+• Uptime: <code>{uptime_str}</code>
+• CPU Usage: <code>{cpu_percent:.1f}%</code>
+• Memory: <code>{memory.percent:.1f}%</code> (<code>{memory.used // (1024**3):.1f}GB / {memory.total // (1024**3):.1f}GB</code>)
+• Disk: <code>{disk.percent:.1f}%</code> (<code>{disk.used // (1024**3):.1f}GB / {disk.total // (1024**3):.1f}GB</code>)
 
-💾 **Database Performance:**
-• Connection: `{'✅ Healthy' if db_stats.get('connection_healthy') else '❌ Issues'}`
-• Cache Hit Rate: `{db_stats.get('cache_hit_rate', 'N/A')}`
-• Total Queries: `{db_stats.get('total_queries', 0)}`
-• Avg Query Time: `{db_stats.get('avg_query_time', 'N/A')}`
+💾 <b>Database Performance:</b>
+• Connection: <code>{'✅ Healthy' if db_stats.get('connection_healthy') else '❌ Issues'}</code>
+• Cache Hit Rate: <code>{db_stats.get('cache_hit_rate', 'N/A')}</code>
+• Total Queries: <code>{db_stats.get('total_queries', 0)}</code>
+• Avg Query Time: <code>{db_stats.get('avg_query_time', 'N/A')}</code>
 
-🎵 **Music Cache:**
-• Total Chats: `{cache_stats.get('total_chats', 0)}`
-• Active Chats: `{cache_stats.get('active_chats', 0)}`
-• Cache Hit Rate: `{cache_stats.get('hit_rate', 'N/A')}`
-• Avg Queue Length: `{cache_stats.get('average_queue_length', 0):.1f}`
+🎵 <b>Music Cache:</b>
+• Total Chats: <code>{cache_stats.get('total_chats', 0)}</code>
+• Active Chats: <code>{cache_stats.get('active_chats', 0)}</code>
+• Cache Hit Rate: <code>{cache_stats.get('hit_rate', 'N/A')}</code>
+• Avg Queue Length: <code>{cache_stats.get('average_queue_length', 0):.1f}</code>
 
-🌐 **API Performance:**
-• Requests Made: `{api_stats.get('requests_made', 0)}`
-• Cache Hit Rate: `{api_stats.get('cache_hit_rate', 'N/A')}`
-• Avg Response Time: `{api_stats.get('avg_response_time', 'N/A')}`
-• Errors: `{api_stats.get('errors', 0)}`
+🌐 <b>API Performance:</b>
+• Requests Made: <code>{api_stats.get('requests_made', 0)}</code>
+• Cache Hit Rate: <code>{api_stats.get('cache_hit_rate', 'N/A')}</code>
+• Avg Response Time: <code>{api_stats.get('avg_response_time', 'N/A')}</code>
+• Errors: <code>{api_stats.get('errors', 0)}</code>
 
-📊 **Call Stats:**
-• Call Ping: `{call_ping_info}`
-• Active VCs: `{len(chat_cache.get_active_chats())}`
+📊 <b>Call Stats:</b>
+• Call Ping: <code>{call_ping_info}</code>
+• Active VCs: <code>{len(chat_cache.get_active_chats())}</code>
 """
         
         done = await reply_msg.edit_text(response, disable_web_page_preview=True)

@@ -1,6 +1,7 @@
 #  Copyright (c) 2025 AshokShau
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 #  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
 
 import asyncio
 import os
@@ -11,7 +12,7 @@ from os import execvp
 
 from pytdbot import Client, types
 
-from TgMusic.core import chat_cache, call, Filter, config
+from TgMusic.core import chat_cache, language_manager, call, Filter, config
 from TgMusic.logger import LOGGER
 from TgMusic.modules.utils.play_helpers import del_msg
 
@@ -44,14 +45,16 @@ async def update(c: Client, message: types.Message) -> None:
 
     if command == "update":
         if not os.path.exists(".git"):
+            user_lang = await language_manager.get_language(message.from_id, message.chat_id)
             await msg.edit_text(
-                "⚠️ This instance does not support updates (no .git directory)."
+                language_manager.get_text("update_no_git", user_lang)
             )
             return
 
         git_path = shutil.which("git") or "/usr/bin/git"
         if not os.path.isfile(git_path):
-            await msg.edit_text("❌ Git not found on system.")
+            user_lang = await language_manager.get_language(message.from_id, message.chat_id)
+            await msg.edit_text(language_manager.get_text("update_git_not_found", user_lang))
             return
 
         try:
@@ -66,15 +69,18 @@ async def update(c: Client, message: types.Message) -> None:
 
             if proc.returncode != 0:
                 if "Permission denied" in output or "Authentication failed" in output:
+                    user_lang = await language_manager.get_language(message.from_id, message.chat_id)
                     await msg.edit_text(
-                        "❌ Update failed: Private repo access denied. Please check your credentials or use SSH."
+                        language_manager.get_text("update_private_repo", user_lang)
                     )
                 else:
-                    await msg.edit_text(f"⚠️ Git pull failed:\n<pre>{output}</pre>")
+                    user_lang = await language_manager.get_language(message.from_id, message.chat_id)
+                    await msg.edit_text(f"{language_manager.get_text('update_git_pull_failed', user_lang)}\n<pre>{output}</pre>")
                 return
 
             if "Already up to date." in output:
-                await msg.edit_text("✅ Bot is already up to date.")
+                user_lang = await language_manager.get_language(message.from_id, message.chat_id)
+                await msg.edit_text(language_manager.get_text("update_already_updated", user_lang))
                 return
 
             if len(output) > 4096:
@@ -91,13 +97,15 @@ async def update(c: Client, message: types.Message) -> None:
                 )
                 os.remove(filename)
             else:
+                user_lang = await language_manager.get_language(message.from_id, message.chat_id)
                 await msg.edit_text(
-                    f"✅ Bot updated successfully. Restarting...\n<b>Update Output:</b>\n<pre>{output}</pre>"
+                    f"{language_manager.get_text('update_success', user_lang)}\n<b>Update Output:</b>\n<pre>{output}</pre>"
                 )
 
         except Exception as e:
             LOGGER.error("Unexpected update error: %s", e)
-            await msg.edit_text(f"⚠️ Update error: {e}")
+            user_lang = await language_manager.get_language(message.from_id, message.chat_id)
+            await msg.edit_text(f"{language_manager.get_text('update_error', user_lang)} {e}")
             return
 
     if active_vc := chat_cache.get_active_chats():
@@ -123,6 +131,7 @@ async def update(c: Client, message: types.Message) -> None:
     else:
         tgmusic_path = shutil.which("tgmusic")
         if not tgmusic_path:
-            await msg.edit_text("❌ Unable to find 'tgmusic' in PATH.")
+            user_lang = await language_manager.get_language(message.from_id, message.chat_id)
+            await msg.edit_text(language_manager.get_text("update_path_error", user_lang))
             return
         execvp("tgmusic", ["tgmusic"])

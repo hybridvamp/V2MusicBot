@@ -1,6 +1,7 @@
 #  Copyright (c) 2025 AshokShau
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 #  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
 
 import asyncio
 import os
@@ -9,7 +10,7 @@ import uuid
 from pytdbot import Client, types
 
 from TgMusic.logger import LOGGER
-from TgMusic.core import Filter, config
+from TgMusic.core import Filter, language_manager, config
 
 
 async def run_shell_command(cmd: str, timeout: int = 60) -> tuple[str, str, int]:
@@ -45,7 +46,8 @@ async def shellrunner(message: types.Message) -> types.Ok | types.Error | types.
         'rm -rf', 'sudo', 'dd ', 'mkfs', 'fdisk',
         ':(){:|:&};:', 'chmod 777', 'wget', 'curl'
     ]):
-        return await message.reply_text("⚠️ Dangerous command blocked!")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        return await message.reply_text("language_manager.get_text("shell_dangerous_blocked", user_lang)")
     """
 
     try:
@@ -61,7 +63,8 @@ async def shellrunner(message: types.Message) -> types.Ok | types.Error | types.
                 if stdout:
                     output_parts.append(f"<b>📤 Output:</b>\n<pre>{stdout}</pre>")
                 if stderr:
-                    output_parts.append(f"<b>❌ Error:</b>\n<pre>{stderr}</pre>")
+                    user_lang = await language_manager.get_language(message.from_id, message.chat_id)
+                    output_parts.append(f"{language_manager.get_text('shell_error', user_lang)}\n<pre>{stderr}</pre>")
                 output_parts.append(f"<b>🔢 Exit Code:</b> <code>{retcode}</code>\n")
 
             output = "\n".join(output_parts)
@@ -72,7 +75,8 @@ async def shellrunner(message: types.Message) -> types.Ok | types.Error | types.
             if stdout:
                 output += f"<b>📤 Output:</b>\n<pre>{stdout}</pre>\n"
             if stderr:
-                output += f"<b>❌ Error:</b>\n<pre>{stderr}</pre>\n"
+                user_lang = await language_manager.get_language(message.from_id, message.chat_id)
+                output += f"{language_manager.get_text('shell_error', user_lang)}\n<pre>{stderr}</pre>\n"
             output += f"<b>🔢 Exit Code:</b> <code>{retcode}</code>"
 
         # Handle empty output
@@ -99,8 +103,9 @@ async def shellrunner(message: types.Message) -> types.Ok | types.Error | types.
 
         return types.Ok()
     except Exception as e:
+        user_lang = await language_manager.get_language(message.from_id, message.chat_id)
         return await message.reply_text(
-            f"⚠️ <b>Error:</b>\n<pre>{str(e)}</pre>", parse_mode="html"
+            f"{language_manager.get_text('shell_execution_error', user_lang)}\n<pre>{str(e)}</pre>", parse_mode="html"
         )
 
 

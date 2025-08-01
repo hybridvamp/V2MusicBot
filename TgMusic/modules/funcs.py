@@ -1,11 +1,12 @@
 #  Copyright (c) 2025 AshokShau
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 #  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
 
 from typing import Union
 from pytdbot import Client, types
 
-from TgMusic.core import Filter, chat_cache, call, db
+from TgMusic.core import Filter, language_manager, chat_cache, call, db
 from TgMusic.core.admins import is_admin
 from TgMusic.modules.utils.play_helpers import extract_argument
 
@@ -29,7 +30,8 @@ async def set_play_type(_: Client, msg: types.Message) -> None:
 
     play_type = int(play_type)
     if play_type not in (0, 1):
-        await msg.reply_text("⚠️ Invalid mode. Use 0  or 1")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        await msg.reply_text(language_manager.get_text("func_invalid_mode", user_lang))
         return
 
     await db.set_play_type(chat_id, play_type)
@@ -57,7 +59,8 @@ async def handle_playback_action(
     """Handle common playback control operations."""
     _chat_id = await is_admin_or_reply(msg)
     if isinstance(_chat_id, types.Error):
-        c.logger.warning(f"⚠️ Admin check failed: {_chat_id.message}")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        c.logger.warning(language_manager.get_text("func_admin_check_failed", user_lang, error=_chat_id.message))
         return
 
     if isinstance(_chat_id, types.Message):
@@ -65,7 +68,8 @@ async def handle_playback_action(
 
     result = await action(_chat_id)
     if isinstance(result, types.Error):
-        await msg.reply_text(f"⚠️ {fail_msg}\n<code>{result.message}</code>")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        await msg.reply_text(language_manager.get_text("func_error", user_lang, message=fail_msg, error=result.message))
         return
 
     await msg.reply_text(f"{success_msg}\n" f"└ Requested by: {await msg.mention()}")

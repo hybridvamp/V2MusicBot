@@ -1,3 +1,8 @@
+#  Copyright (c) 2025 AshokShau
+#  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
+#  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
+
 from pytdbot import Client, types
 
 from ._config import config
@@ -22,7 +27,7 @@ async def send_logger(client: Client, chat_id, song: CachedTrack):
         return
 
     text = (
-        f"<b>Song Playing</b> in <code>{chat_id}</code>\n\n"
+        f"<b>🎵 Song Playing</b> in <code>{chat_id}</code>\n\n"
         f"▶️ <b>Now Playing:</b> <a href='{song.url}'>{song.name}</a>\n\n"
         f"• <b>Duration:</b> {sec_to_min(song.duration)}\n"
         f"• <b>Requested by:</b> {song.user}\n"

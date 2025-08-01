@@ -1,6 +1,7 @@
 #  Copyright (c) 2025 AshokShau
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 #  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
 
 import re
 
@@ -18,6 +19,7 @@ from TgMusic.core import (
     Filter,
     SupportButton,
     control_buttons,
+    language_manager,
 )
 from TgMusic.core.admins import is_admin, load_admin_cache
 from TgMusic.modules.utils import sec_to_min, get_audio_duration
@@ -129,14 +131,15 @@ async def _handle_single_track(
     # Download track if not already cached
     if not song.file_path:
         download_result = await call.song_download(song)
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
         if isinstance(download_result, types.Error):
             return await edit_text(
-                msg, f"❌ Download failed: {download_result.message}"
+                msg, language_manager.get_text("playback_download_failed", user_lang, error=download_result.message)
             )
 
         song.file_path = download_result
         if not download_result:
-            return await edit_text(msg, "❌ Failed to download track")
+            return await edit_text(msg, language_manager.get_text("playback_failed", user_lang))
 
     # Get duration if not provided
     song.duration = song.duration or await get_audio_duration(song.file_path)
@@ -168,12 +171,14 @@ async def _handle_single_track(
 
     play_result = await call.play_media(chat_id, song.file_path, video=is_video)
     if isinstance(play_result, types.Error):
-        return await edit_text(msg, text=f"⚠️ Playback error: {play_result.message}")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        return await edit_text(msg, text=language_manager.get_text("playback_error", user_lang, error=play_result.message))
 
     # Prepare now playing message
     thumb = await gen_thumb(song) if await db.get_thumbnail_status(chat_id) else ""
+    user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
     now_playing = (
-        f"🎵 <b>Now Playing:</b>\n\n"
+        language_manager.get_text("playback_now_playing", user_lang) +
         f"▫ <b>Track:</b> <a href='{song.url}'>{song.name}</a>\n"
         f"▫ <b>Duration:</b> {sec_to_min(song.duration)}\n"
         f"▫ <b>Requested by:</b> {song.user}"
@@ -254,7 +259,8 @@ async def play_music(
 ):
     """Main music playback handler for both single tracks and playlists."""
     if not url_data or not url_data.tracks:
-        return await edit_text(msg, "❌ No tracks found in the provided source.")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        return await edit_text(msg, language_manager.get_text("playback_no_tracks", user_lang))
 
     await edit_text(msg, text="⬇️ Downloading track...")
 
@@ -361,23 +367,24 @@ async def handle_play_command(c: Client, msg: types.Message, is_video: bool = Fa
     """Main handler for /play and /vplay commands."""
     chat_id = msg.chat_id
 
+    user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+    
     # Validate chat type
     if chat_id > 0:
-        return await msg.reply_text("❌ This command only works in groups/channels.")
+        return await msg.reply_text(language_manager.get_text("playback_groups_only", user_lang))
 
     # Check queue limit
     queue = chat_cache.get_queue(chat_id)
     if len(queue) > 10:
         return await msg.reply_text(
-            "⚠️ Queue limit reached (10 tracks max). Use /end to clear queue."
+            language_manager.get_text("playback_queue_limit", user_lang)
         )
 
     # Verify bot admin status
     await load_admin_cache(c, chat_id)
     if not await is_admin(chat_id, c.me.id):
         return await msg.reply_text(
-            "⚠️ I need admin privileges with 'Invite Users' permission "
-            "in private groups. Promote me and try again or use /reload."
+            language_manager.get_text("playback_admin_required", user_lang)
         )
 
     # Get message context
@@ -386,7 +393,7 @@ async def handle_play_command(c: Client, msg: types.Message, is_video: bool = Fa
     args = extract_argument(msg.text)
 
     # Send initial response
-    status_msg = await msg.reply_text("🔍 Processing request...")
+    status_msg = await msg.reply_text(language_manager.get_text("playback_processing", user_lang))
     if isinstance(status_msg, types.Error):
         LOGGER.error("Failed to send status message: %s", status_msg)
         return None
@@ -399,7 +406,7 @@ async def handle_play_command(c: Client, msg: types.Message, is_video: bool = Fa
     # Validate input
     if not args and not url and (not reply or not tg.is_valid(reply)):
         usage_text = (
-            "🎵 <b>Usage:</b>\n"
+            language_manager.get_text("playback_usage", user_lang) +
             f"/{'vplay' if is_video else 'play'} [song_name|URL]\n\n"
             "Supported platforms:\n"
             "▫ YouTube\n▫ Spotify\n▫ JioSaavn\n▫ SoundCloud\n▫ Apple Music"
@@ -418,7 +425,7 @@ async def handle_play_command(c: Client, msg: types.Message, is_video: bool = Fa
             return await edit_text(
                 status_msg,
                 text=(
-                    "⚠️ Unsupported URL\n\n"
+                    language_manager.get_text("playback_unsupported_url", user_lang) +
                     "Supported platforms:\n"
                     "▫ YouTube\n▫ Spotify\n▫ JioSaavn\n▫ SoundCloud\n▫ Apple Music"
                 ),
@@ -429,7 +436,7 @@ async def handle_play_command(c: Client, msg: types.Message, is_video: bool = Fa
         if isinstance(track_info, types.Error):
             return await edit_text(
                 status_msg,
-                text=f"⚠️ Couldn't retrieve track info:\n{track_info.message}",
+                text=language_manager.get_text("playback_track_info_error_retrieve", user_lang, error=track_info.message),
                 reply_markup=SupportButton,
             )
 
@@ -444,14 +451,14 @@ async def handle_play_command(c: Client, msg: types.Message, is_video: bool = Fa
     if isinstance(search_result, types.Error):
         return await edit_text(
             status_msg,
-            text=f"🔍 Search failed: {search_result.message}",
+            text=language_manager.get_text("playback_search_failed", user_lang, error=search_result.message),
             reply_markup=SupportButton,
         )
 
     if not search_result or not search_result.tracks:
         return await edit_text(
             status_msg,
-            text="🔍 No results found. Try different keywords.",
+            text=language_manager.get_text("playback_no_results", user_lang),
             reply_markup=SupportButton,
         )
 

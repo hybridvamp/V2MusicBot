@@ -1,10 +1,11 @@
 #  Copyright (c) 2025 AshokShau
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 #  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
 
 from pytdbot import Client, types
 
-from TgMusic.core import Filter, chat_cache
+from TgMusic.core import Filter, language_manager, chat_cache
 from TgMusic.core.admins import is_admin
 from TgMusic.modules.utils.play_helpers import extract_argument
 
@@ -36,7 +37,8 @@ async def modify_loop(c: Client, msg: types.Message) -> None:
 
     loop = int(args)
     if loop < 0 or loop > 10:
-        await msg.reply_text("⚠️ Loop count must be between 0 and 10")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        await msg.reply_text(language_manager.get_text("loop_range_error", user_lang))
         return
 
     chat_cache.set_loop_count(chat_id, loop)
@@ -46,4 +48,5 @@ async def modify_loop(c: Client, msg: types.Message) -> None:
         f"🔁 {action}\n" f"└ Changed by: {await msg.mention()}"
     )
     if isinstance(reply, types.Error):
-        c.logger.warning(f"⚠️ Failed to send reply: {reply.message}")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        c.logger.warning(language_manager.get_text("loop_error", user_lang, error=reply.message))

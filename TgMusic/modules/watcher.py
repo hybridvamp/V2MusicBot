@@ -1,12 +1,14 @@
 #  Copyright (c) 2025 AshokShau
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 #  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
 
 import asyncio
 
 from pytdbot import Client, types
 
 from TgMusic.core import (
+    language_manager,
     chat_invite_cache,
     ChatMemberStatus,
     user_status_cache,

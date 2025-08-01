@@ -1,6 +1,7 @@
 #  Copyright (c) 2025 AshokShau
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 #  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
 
 import asyncio
 import time
@@ -14,7 +15,8 @@ from pymongo.errors import (
     ServerSelectionTimeoutError, 
     AutoReconnect,
     DuplicateKeyError,
-    BulkWriteError
+    BulkWriteError,
+    InvalidOperation
 )
 from pymongo.operations import UpdateOne, InsertOne
 
@@ -137,6 +139,34 @@ class Database:
         self.bot_cache = TTLCache(maxsize=self.BOT_CACHE_SIZE, ttl=self.BOT_CACHE_TTL)
         self.user_cache = TTLCache(maxsize=self.USER_CACHE_SIZE, ttl=self.USER_CACHE_TTL)
 
+    async def _reconnect_client(self):
+        """Reconnect to MongoDB after connection loss."""
+        try:
+            LOGGER.info("Attempting to reconnect to MongoDB...")
+            
+            # Close existing connection if it exists
+            if hasattr(self, 'mongo_client') and self.mongo_client:
+                try:
+                    await self.mongo_client.close()
+                except Exception:
+                    pass
+            
+            # Reinitialize client
+            self._initialize_client()
+            self._initialize_databases()
+            
+            # Test connection
+            await self.mongo_client.admin.command("ping")
+            
+            LOGGER.info("Successfully reconnected to MongoDB")
+            self._connection_healthy = True
+            self._last_health_check = time.time()
+            
+        except Exception as e:
+            LOGGER.error(f"Failed to reconnect to MongoDB: {e}")
+            self._connection_healthy = False
+            raise
+
     async def _execute_with_retry(self, operation, *args, **kwargs):
         """Execute database operation with exponential backoff retry."""
         delay = self.RETRY_DELAY
@@ -149,10 +179,15 @@ class Database:
                 self.metrics.record_query(duration)
                 return result
                 
-            except (ConnectionFailure, ServerSelectionTimeoutError, AutoReconnect) as e:
+            except (ConnectionFailure, ServerSelectionTimeoutError, AutoReconnect, InvalidOperation) as e:
                 self.metrics.connection_error()
                 self.metrics.retry()
                 self._connection_healthy = False
+                
+                # Handle InvalidOperation (client closed)
+                if isinstance(e, InvalidOperation) and "after close" in str(e):
+                    LOGGER.warning("Database client was closed, attempting to reconnect...")
+                    await self._reconnect_client()
                 
                 if attempt == self.MAX_RETRIES - 1:
                     LOGGER.error(f"Database operation failed after {self.MAX_RETRIES} attempts: {e}")
@@ -221,8 +256,11 @@ class Database:
             
             return chat
             
+        except (RuntimeError, InvalidOperation) as e:
+            LOGGER.warning("Database error getting chat %s: %s", chat_id, e)
+            return None
         except Exception as e:
-            LOGGER.warning("Error getting chat %s: %s", chat_id, e)
+            LOGGER.error("Unexpected error getting chat %s: %s", chat_id, e)
             return None
 
     async def add_chat(self, chat_id: int) -> None:
@@ -245,8 +283,10 @@ class Database:
                 
             except DuplicateKeyError:
                 pass  # Chat already exists
+            except (RuntimeError, InvalidOperation) as e:
+                LOGGER.warning("Database error adding chat %s: %s", chat_id, e)
             except Exception as e:
-                LOGGER.error("Error adding chat %s: %s", chat_id, e)
+                LOGGER.error("Unexpected error adding chat %s: %s", chat_id, e)
 
     async def _update_chat_field(self, chat_id: int, key: str, value: Any) -> None:
         """Update chat field with optimized caching strategy."""
@@ -265,8 +305,10 @@ class Database:
                 else:
                     cache[chat_id] = {key: value}
                     
+        except (RuntimeError, InvalidOperation) as e:
+            LOGGER.warning("Database error updating chat field %s for %s: %s", key, chat_id, e)
         except Exception as e:
-            LOGGER.error("Error updating chat field %s for %s: %s", key, chat_id, e)
+            LOGGER.error("Unexpected error updating chat field %s for %s: %s", key, chat_id, e)
 
     async def get_play_type(self, chat_id: int) -> int:
         chat = await self.get_chat(chat_id)
@@ -669,6 +711,65 @@ class Database:
             
         except Exception as e:
             LOGGER.error("Error closing database: %s", e)
+
+    async def get_user_language(self, user_id: int) -> Optional[dict]:
+        """Get user's language preference."""
+        try:
+            return await self._execute_with_retry(
+                self.users_db.find_one,
+                {"_id": user_id},
+                {"language": 1}
+            )
+        except Exception as e:
+            LOGGER.error("Error getting user language for %s: %s", user_id, e)
+            return None
+
+    async def set_user_language(self, user_id: int, language: str) -> None:
+        """Set user's language preference."""
+        try:
+            await self._execute_with_retry(
+                self.users_db.update_one,
+                {"_id": user_id},
+                {"$set": {"language": language}},
+                upsert=True
+            )
+            
+            # Update cache
+            if user_id in self.user_cache:
+                self.user_cache[user_id]["language"] = language
+                
+        except Exception as e:
+            LOGGER.error("Error setting user language for %s: %s", user_id, e)
+
+    async def get_chat_language(self, chat_id: int) -> str:
+        """Get chat's language preference."""
+        try:
+            chat_data = await self._execute_with_retry(
+                self.chat_db.find_one,
+                {"_id": chat_id},
+                {"language": 1}
+            )
+            return chat_data.get("language", "en-US") if chat_data else "en-US"
+        except Exception as e:
+            LOGGER.error("Error getting chat language for %s: %s", chat_id, e)
+            return "en-US"
+
+    async def set_chat_language(self, chat_id: int, language: str) -> None:
+        """Set chat's language preference."""
+        try:
+            await self._execute_with_retry(
+                self.chat_db.update_one,
+                {"_id": chat_id},
+                {"$set": {"language": language}},
+                upsert=True
+            )
+            
+            # Update cache
+            if chat_id in self.chat_cache:
+                self.chat_cache[chat_id]["language"] = language
+                
+        except Exception as e:
+            LOGGER.error("Error setting chat language for %s: %s", chat_id, e)
 
 
 db: Database = Database()

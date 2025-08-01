@@ -5,7 +5,7 @@
 
 from pytdbot import Client, types
 
-from TgMusic.core import Filter, chat_cache, call
+from TgMusic.core import Filter, language_manager, chat_cache, call
 from TgMusic.core.admins import is_admin
 from .utils import sec_to_min
 from .utils.play_helpers import extract_argument
@@ -39,26 +39,31 @@ async def seek_song(_: Client, msg: types.Message) -> None:
     try:
         seek_time = int(args)
     except ValueError:
-        await msg.reply_text("⚠️ Please enter a valid number of seconds.")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        await msg.reply_text(language_manager.get_text("seek_invalid_number", user_lang))
         return
 
     if seek_time < 0:
-        await msg.reply_text("⚠️ Please enter a positive number of seconds.")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        await msg.reply_text(language_manager.get_text("seek_positive_number", user_lang))
         return
 
     if seek_time < 20:
-        await msg.reply_text("⚠️ Minimum seek time is 20 seconds.")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        await msg.reply_text(language_manager.get_text("seek_minimum_time", user_lang))
         return
 
     curr_dur = await call.played_time(chat_id)
     if isinstance(curr_dur, types.Error):
-        await msg.reply_text(f"⚠️ <b>Error:</b> {curr_dur.message}")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        await msg.reply_text(language_manager.get_text("seek_duration_error", user_lang, error=curr_dur.message))
         return
 
     seek_to = curr_dur + seek_time
     if seek_to >= curr_song.duration:
         max_duration = sec_to_min(curr_song.duration)
-        await msg.reply_text(f"⚠️ Cannot seek beyond track duration ({max_duration}).")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        await msg.reply_text(language_manager.get_text("seek_beyond_duration", user_lang, duration=max_duration))
         return
 
     _seek = await call.seek_stream(
@@ -69,10 +74,12 @@ async def seek_song(_: Client, msg: types.Message) -> None:
         curr_song.is_video,
     )
     if isinstance(_seek, types.Error):
-        await msg.reply_text(f"⚠️ <b>Error:</b> {_seek.message}")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        await msg.reply_text(language_manager.get_text("seek_error", user_lang, error=_seek.message))
         return
 
+    user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
     await msg.reply_text(
-        f"⏩ Seeked {seek_time} seconds forward by {await msg.mention()}\n"
-        f"🎵 Now at: {sec_to_min(seek_to)}/{sec_to_min(curr_song.duration)}"
+        language_manager.get_text("seek_success", user_lang, seconds=seek_time, user=await msg.mention()) +
+        f"\n{language_manager.get_text('seek_now_at', user_lang)} {sec_to_min(seek_to)}/{sec_to_min(curr_song.duration)}"
     )

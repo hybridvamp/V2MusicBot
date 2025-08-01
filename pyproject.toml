@@ -66,9 +66,9 @@ dev = [
 tgmusic = "TgMusic.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/AshokShau/tgmusicbot"
-Source = "https://github.com/AshokShau/tgmusicbot"
-"Issue Tracker" = "https://github.com/AshokShau/tgmusicbot/issues"
+Homepage = "https://github.com/depinrise/TgMusicBotFork"
+Source = "https://github.com/depinrise/TgMusicBotFork"
+"Issue Tracker" = "https://github.com/depinrise/TgMusicBotFork/issues"
 
 [tool.uv]
 package = true

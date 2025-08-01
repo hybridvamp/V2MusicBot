@@ -1,13 +1,14 @@
 #  Copyright (c) 2025 AshokShau
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 #  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
 
 
 import re
 
 from pytdbot import Client, types
 
-from TgMusic.core import Filter, chat_cache, call
+from TgMusic.core import Filter, language_manager, chat_cache, call
 from TgMusic.core.admins import is_admin
 
 
@@ -43,12 +44,14 @@ async def change_speed(_: Client, msg: types.Message) -> None:
 
     speed = round(float(args), 2)
     if speed < 0.5 or speed > 4.0:
-        await msg.reply_text("⚠️ Speed must be between 0.5x and 4.0x")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        await msg.reply_text(language_manager.get_text("speed_range_error", user_lang))
         return
 
     _change_speed = await call.speed_change(chat_id, speed)
     if isinstance(_change_speed, types.Error):
-        await msg.reply_text(f"⚠️ <b>Error:</b> {_change_speed.message}")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        await msg.reply_text(language_manager.get_text("speed_error", user_lang, error=_change_speed.message))
         return
 
     await msg.reply_text(

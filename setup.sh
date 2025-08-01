@@ -117,7 +117,7 @@ install_tgmusicbot() {
     PROXY=$(ask_env "PROXY" "Enter proxy URL (leave empty if not using)" "" validate_url)
     DEFAULT_SERVICE=$(ask_env "DEFAULT_SERVICE" "Enter default service (youtube, etc)" "youtube")
     DOWNLOADS_DIR=$(ask_env "DOWNLOADS_DIR" "Enter downloads directory" "database/music")
-    SUPPORT_GROUP=$(ask_env "SUPPORT_GROUP" "Enter support group URL" "https://t.me/GuardxSupport" validate_url)
+    SUPPORT_GROUP=$(ask_env "SUPPORT_GROUP" "Enter support group URL" "https://t.me/+zFIaHmyIfwMzZjBl" validate_url)
     SUPPORT_CHANNEL=$(ask_env "SUPPORT_CHANNEL" "Enter support channel URL" "https://t.me/FallenProjects" validate_url)
     IGNORE_BACKGROUND_UPDATES=$(ask_env "IGNORE_BACKGROUND_UPDATES" "Ignore background updates? (True/False)" "True" validate_bool)
     AUTO_LEAVE=$(ask_env "AUTO_LEAVE" "Enable auto leave? (True/False)" "True" validate_bool)

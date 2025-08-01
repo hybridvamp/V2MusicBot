@@ -1,26 +1,26 @@
-# 🎵 TgMusicBot – Telegram Music Bot [![Stars](https://img.shields.io/github/stars/AshokShau/TgMusicBot?style=social)](https://github.com/AshokShau/TgMusicBot/stargazers)
+# 🎵 TgMusicBot – Telegram Music Bot [![Stars](https://img.shields.io/github/stars/depinrise/TgMusicBotFork?style=social)](https://github.com/depinrise/TgMusicBotFork/stargazers)
 
 **A high-performance Telegram Voice Chat Bot** for streaming music from YouTube, Spotify, JioSaavn, and more. Built with Python, Py-Tgcalls, and PyTdBot.
 
 <p align="center">
   <!-- GitHub Stars -->
-  <a href="https://github.com/AshokShau/TgMusicBot/stargazers">
-    <img src="https://img.shields.io/github/stars/AshokShau/TgMusicBot?style=for-the-badge&color=black&logo=github" alt="Stars"/>
+  <a href="https://github.com/depinrise/TgMusicBotFork/stargazers">
+          <img src="https://img.shields.io/github/stars/depinrise/TgMusicBotFork?style=for-the-badge&color=black&logo=github" alt="Stars"/>
   </a>
   
   <!-- GitHub Forks -->
-  <a href="https://github.com/AshokShau/TgMusicBot/network/members">
-    <img src="https://img.shields.io/github/forks/AshokShau/TgMusicBot?style=for-the-badge&color=black&logo=github" alt="Forks"/>
+  <a href="https://github.com/depinrise/TgMusicBotFork/network/members">
+          <img src="https://img.shields.io/github/forks/depinrise/TgMusicBotFork?style=for-the-badge&color=black&logo=github" alt="Forks"/>
   </a>
 
   <!-- Last Commit -->
-  <a href="https://github.com/AshokShau/TgMusicBot/commits/AshokShau">
-    <img src="https://img.shields.io/github/last-commit/AshokShau/TgMusicBot?style=for-the-badge&color=blue" alt="Last Commit"/>
+  <a href="https://github.com/depinrise/TgMusicBotFork/commits/main">
+          <img src="https://img.shields.io/github/last-commit/depinrise/TgMusicBotFork?style=for-the-badge&color=blue" alt="Last Commit"/>
   </a>
 
   <!-- Repo Size -->
-  <a href="https://github.com/AshokShau/TgMusicBot">
-    <img src="https://img.shields.io/github/repo-size/AshokShau/TgMusicBot?style=for-the-badge&color=success" alt="Repo Size"/>
+  <a href="https://github.com/depinrise/TgMusicBotFork">
+          <img src="https://img.shields.io/github/repo-size/depinrise/TgMusicBotFork?style=for-the-badge&color=success" alt="Repo Size"/>
   </a>
 
   <!-- Language -->
@@ -29,28 +29,28 @@
   </a>
 
   <!-- License -->
-  <a href="https://github.com/AshokShau/TgMusicBot/blob/master/LICENSE">
-    <img src="https://img.shields.io/github/license/AshokShau/TgMusicBot?style=for-the-badge&color=blue" alt="License"/>
+  <a href="https://github.com/depinrise/TgMusicBotFork/blob/main/LICENSE">
+          <img src="https://img.shields.io/github/license/depinrise/TgMusicBotFork?style=for-the-badge&color=blue" alt="License"/>
   </a>
 
   <!-- Open Issues -->
-  <a href="https://github.com/AshokShau/TgMusicBot/issues">
-    <img src="https://img.shields.io/github/issues/AshokShau/TgMusicBot?style=for-the-badge&color=red" alt="Issues"/>
+  <a href="https://github.com/depinrise/TgMusicBotFork/issues">
+          <img src="https://img.shields.io/github/issues/depinrise/TgMusicBotFork?style=for-the-badge&color=red" alt="Issues"/>
   </a>
 
   <!-- Pull Requests -->
-  <a href="https://github.com/AshokShau/TgMusicBot/pulls">
-    <img src="https://img.shields.io/github/issues-pr/AshokShau/TgMusicBot?style=for-the-badge&color=purple" alt="PRs"/>
+  <a href="https://github.com/depinrise/TgMusicBotFork/pulls">
+          <img src="https://img.shields.io/github/issues-pr/depinrise/TgMusicBotFork?style=for-the-badge&color=purple" alt="PRs"/>
   </a>
 
   <!-- GitHub Workflow CI -->
-  <a href="https://github.com/AshokShau/TgMusicBot/actions">
-    <img src="https://img.shields.io/github/actions/workflow/status/AshokShau/TgMusicBot/code-fixer.yml?style=for-the-badge&label=CI&logo=github" alt="CI Status"/>
+  <a href="https://github.com/depinrise/TgMusicBotFork/actions">
+          <img src="https://img.shields.io/github/actions/workflow/status/depinrise/TgMusicBotFork/code-fixer.yml?style=for-the-badge&label=CI&logo=github" alt="CI Status"/>
   </a>
 </p>
 
 <p align="center">
-   <img src="https://raw.githubusercontent.com/AshokShau/TgMusicBot/master/.github/images/thumb.png" alt="thumbnail" width="320" height="320">
+   <img src="https://raw.githubusercontent.com/depinrise/TgMusicBotFork/main/.github/images/thumb.png" alt="thumbnail" width="320" height="320">
 </p>
 
 ### 🔥 Live Bot: [@FallenBeatzBot](https://t.me/FallenBeatzBot)
@@ -73,7 +73,7 @@
 
 ## 🚀 Quick Deploy
 
-[![Deploy on Heroku](https://img.shields.io/badge/Deploy%20on%20Heroku-430098?style=for-the-badge&logo=heroku)](https://heroku.com/deploy?template=https://github.com/AshokShau/TgMusicBot)
+[![Deploy on Heroku](https://img.shields.io/badge/Deploy%20on%20Heroku-430098?style=for-the-badge&logo=heroku)](https://heroku.com/deploy?template=https://github.com/depinrise/TgMusicBotFork)
 
 ---
 
@@ -92,7 +92,7 @@
 ### 🚀 Quick Setup
 1. Clone the repository:
    ```sh
-   git clone https://github.com/AshokShau/TgMusicBot.git && cd TgMusicBot
+   git clone https://github.com/depinrise/TgMusicBotFork.git && cd TgMusicBotFork
    ```
 
 ### 🔧 Configuration
@@ -179,7 +179,7 @@
 
 2. **Clone the repository**:
    ```sh
-   git clone https://github.com/AshokShau/TgMusicBot.git && cd TgMusicBot
+   git clone https://github.com/depinrise/TgMusicBotFork.git && cd TgMusicBotFork
    ```
 
 ### 🐍 Python Environment
@@ -264,9 +264,9 @@ tgmusic
 | `API_KEY`          | API Key                                                           | Start [@FallenApiBot](https://t.me/FallenApiBot) and type `/apikey`                                                                                                     |
 | `MIN_MEMBER_COUNT` | Minimum number of members required to use the bot                 | Default: 50                                                                                                                                                             |
 | `PROXY`            | Proxy URL for the bot if you want to use it for yt-dlp (Optional) | Any online service                                                                                                                                                      |
-| `COOKIES_URL`      | Cookies URL for the bot                                           | [![Cookie Guide](https://img.shields.io/badge/Guide-Read%20Here-blue?style=flat-square)](https://github.com/AshokShau/TgMusicBot/blob/master/TgMusic/cookies/README.md) |
+| `COOKIES_URL`      | Cookies URL for the bot                                           | [![Cookie Guide](https://img.shields.io/badge/Guide-Read%20Here-blue?style=flat-square)](https://github.com/depinrise/TgMusicBotFork/blob/main/TgMusic/cookies/README.md) |
 | `DEFAULT_SERVICE`  | Default search platform (Options: youtube, spotify, jiosaavn)     | Default: youtube                                                                                                                                                        |
-| `SUPPORT_GROUP`    | Telegram Group Link                                               | Default: https://t.me/GuardxSupport                                                                                                                                     |
+| `SUPPORT_GROUP`    | Telegram Group Link                                               | Default: https://t.me/+zFIaHmyIfwMzZjBl                                                                                                                                     |
 | `SUPPORT_CHANNEL`  | Telegram Channel Link                                             | Default: https://t.me/FallenProjects                                                                                                                                    |
 | `AUTO_LEAVE`       | Leave all chats for all userbot clients                           | Default: True                                                                                                                                                           |
 | `START_IMG`        | Start Image URL                                                   | Default: [IMG](https://i.pinimg.com/1200x/e8/89/d3/e889d394e0afddfb0eb1df0ab663df95.jpg)                                                                                |                                                      |
@@ -286,7 +286,7 @@ API_KEY=your-secret-key
 📌 Get keys: [Contact @AshokShau](https://t.me/AshokShau) or [@FallenApiBot](https://t.me/FallenApiBot)
 
 ### Option 2: Cookies
-[![Cookie Guide](https://img.shields.io/badge/Guide-Read%20Here-blue?style=flat-square)](https://github.com/AshokShau/TgMusicBot/blob/master/TgMusic/cookies/README.md)
+[![Cookie Guide](https://img.shields.io/badge/Guide-Read%20Here-blue?style=flat-square)](https://github.com/depinrise/TgMusicBotFork/blob/main/TgMusic/cookies/README.md)
 
 ---
 
@@ -318,14 +318,14 @@ API_KEY=your-secret-key
 ## 📜 License
 
 AGPL-3.0 © [AshokShau](https://github.com/AshokShau).  
-[![License](https://img.shields.io/github/license/AshokShau/TgMusicBot?color=blue)](LICENSE)
+[![License](https://img.shields.io/github/license/depinrise/TgMusicBotFork?color=blue)](LICENSE)
 
 ---
 
 ## 💖 Support
 
 Help keep this project alive!  
-[![Telegram](https://img.shields.io/badge/Chat-Support%20Group-blue?logo=telegram)](https://t.me/GuardxSupport)  
+[![Telegram](https://img.shields.io/badge/Chat-Support%20Group-blue?logo=telegram)](https://t.me/+zFIaHmyIfwMzZjBl)  
 [![Donate](https://img.shields.io/badge/Donate-Crypto/PayPal-ff69b4)](https://t.me/AshokShau)
 
 ---

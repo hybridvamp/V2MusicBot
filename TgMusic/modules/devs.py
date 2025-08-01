@@ -1,6 +1,7 @@
 #  Copyright (c) 2025 AshokShau
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 #  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
 
 import inspect
 import io
@@ -25,7 +26,7 @@ from pytdbot import __version__ as py_td_ver
 from pytgcalls import __version__ as pytgver
 
 from TgMusic import StartTime
-from TgMusic.core import Filter, chat_cache, config, call, db
+from TgMusic.core import Filter, language_manager, chat_cache, config, call, db
 from TgMusic.modules.utils.play_helpers import del_msg, extract_argument
 
 
@@ -121,7 +122,8 @@ async def exec_eval(c: Client, m: types.Message) -> None:
             # Return formatted stripped traceback
             stripped_tb = tb[first_snip_idx:]
             formatted_tb = format_exception(e, tb=stripped_tb)
-            return "⚠️ Error:\n\n", formatted_tb
+            user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+            return language_manager.get_text("func_error", user_lang, message="Error:\n\n"), formatted_tb
 
     prefix, result = await _eval()
 
@@ -402,8 +404,9 @@ async def auto_end(c: Client, message: types.Message) -> None:
         await db.set_auto_end(c.me.id, False)
         reply = await message.reply_text("❌ <b>Auto End</b> has been <b>disabled</b>.")
     else:
+        user_lang = await language_manager.get_language(message.from_id, message.chat_id)
         reply = await message.reply_text(
-            f"⚠️ Unknown argument: <b>{args}</b>\nUse <code>/autoend on</code> or <code>/autoend off</code>.",
+            language_manager.get_text("func_error", user_lang, message=f"Unknown argument: <b>{args}</b>\nUse <code>/autoend on</code> or <code>/autoend off</code>."),
             disable_web_page_preview=True,
         )
     if isinstance(reply, types.Error):

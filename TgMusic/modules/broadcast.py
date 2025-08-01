@@ -1,13 +1,14 @@
 #  Copyright (c) 2025 AshokShau
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 #  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
 
 import asyncio
 import time
 
 from pytdbot import Client, types
 
-from TgMusic.core import Filter, config, db
+from TgMusic.core import Filter, language_manager, config, db
 from TgMusic.logger import LOGGER
 from TgMusic.modules.utils.play_helpers import del_msg, extract_argument
 

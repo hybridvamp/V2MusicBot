@@ -1,10 +1,11 @@
 #  Copyright (c) 2025 AshokShau
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 #  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
 
 from pytdbot import Client, types
 
-from TgMusic.core import Filter, chat_cache
+from TgMusic.core import Filter, language_manager, chat_cache
 from TgMusic.core.admins import is_admin
 
 
@@ -29,7 +30,8 @@ async def clear_queue(c: Client, msg: types.Message) -> None:
         return None
 
     chat_cache.clear_chat(chat_id)
-    reply = await msg.reply_text(f"✅ Queue cleared by {await msg.mention()}")
+    user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+    reply = await msg.reply_text(language_manager.get_text("clear_success", user_lang, user=await msg.mention()))
     if isinstance(reply, types.Error):
         c.logger.warning(f"Error sending reply: {reply}")
     return None

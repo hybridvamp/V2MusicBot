@@ -4,7 +4,7 @@
 
 from pytdbot import Client, types
 
-from TgMusic.core import Filter, db, is_owner
+from TgMusic.core import Filter, language_manager, db, is_owner
 from TgMusic.logger import LOGGER
 from TgMusic.modules.utils.play_helpers import extract_argument
 
@@ -46,8 +46,9 @@ async def buttons(_: Client, msg: types.Message) -> None:
         await db.set_buttons_status(chat_id, False)
         reply = await msg.reply_text("❌ Button controls disabled.")
     else:
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
         reply = await msg.reply_text(
-            "⚠️ Invalid command usage.\n"
+            language_manager.get_text("owner_invalid_usage", user_lang) +
             "Correct usage: <code>/buttons [enable|disable|on|off]</code>"
         )
     if isinstance(reply, types.Error):
@@ -91,8 +92,9 @@ async def thumbnail(_: Client, msg: types.Message) -> None:
         await db.set_thumbnail_status(chat_id, False)
         reply = await msg.reply_text("❌ Thumbnails disabled.")
     else:
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
         reply = await msg.reply_text(
-            "⚠️ Invalid command usage.\n"
+            language_manager.get_text("owner_invalid_usage", user_lang) +
             "Correct usage: <code>/thumbnail [enable|disable|on|off]</code>"
         )
     if isinstance(reply, types.Error):

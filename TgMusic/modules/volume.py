@@ -1,10 +1,11 @@
 #  Copyright (c) 2025 AshokShau
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 #  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
 
 from pytdbot import Client, types
 
-from TgMusic.core import Filter, call
+from TgMusic.core import Filter, language_manager, call
 from .funcs import is_admin_or_reply
 from .utils.play_helpers import extract_argument
 
@@ -14,7 +15,8 @@ async def volume(c: Client, msg: types.Message) -> None:
     """Adjust the playback volume (1-200%)."""
     chat_id = await is_admin_or_reply(msg)
     if isinstance(chat_id, types.Error):
-        c.logger.warning(f"⚠️ Admin check failed: {chat_id.message}")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        c.logger.warning(language_manager.get_text("func_admin_check_failed", user_lang, error=chat_id.message))
         return None
 
     if isinstance(chat_id, types.Message):
@@ -33,7 +35,8 @@ async def volume(c: Client, msg: types.Message) -> None:
     try:
         vol_int = int(args)
     except ValueError:
-        await msg.reply_text("⚠️ Please enter a valid number between 1 and 200")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        await msg.reply_text(language_manager.get_text("volume_invalid_number", user_lang))
         return None
 
     if vol_int == 0:
@@ -41,12 +44,14 @@ async def volume(c: Client, msg: types.Message) -> None:
         return None
 
     if not 1 <= vol_int <= 200:
-        await msg.reply_text("⚠️ Volume must be between 1% and 200%")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        await msg.reply_text(language_manager.get_text("volume_range_error", user_lang))
         return None
 
     done = await call.change_volume(chat_id, vol_int)
     if isinstance(done, types.Error):
-        await msg.reply_text(f"⚠️ <b>Error:</b> {done.message}")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        await msg.reply_text(language_manager.get_text("volume_error", user_lang, error=done.message))
         return None
 
     await msg.reply_text(f"🔊 Volume set to <b>{vol_int}%</b> by {await msg.mention()}")

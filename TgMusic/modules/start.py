@@ -1,6 +1,7 @@
 #  Copyright (c) 2025 AshokShau
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 #  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
 
 from pytdbot import Client, types
 
@@ -9,6 +10,7 @@ from TgMusic.core import (
     config,
     Filter,
     SupportButton,
+    language_manager,
 )
 from TgMusic.core.buttons import add_me_markup, HelpMenu, BackHelpMenu
 
@@ -73,17 +75,18 @@ async def callback_query_help(c: Client, message: types.UpdateNewCallbackQuery) 
         else:
             c.logger.warning("Invalid sender type for callback query")
             return None
+        
         user = await c.getUser(user_id)
-        await message.answer("📚 Opening Help Menu...")
-        welcome_text = (
-            f"👋 <b>Hello {user.first_name}!</b>\n\n"
-            f"Welcome to <b>{c.me.first_name}</b> — your ultimate music bot.\n"
-            f"<code>Version: v{__version__}</code>\n\n"
-            "💡 <b>What makes me special?</b>\n"
-            "• YouTube, Spotify, Apple Music, SoundCloud support\n"
-            "• Advanced queue and playback controls\n"
-            "• Private and group usage\n\n"
-            "🔍 <i>Select a help category below to continue.</i>"
+        chat_id = message.chat_id
+        user_lang = await language_manager.get_language(user_id, chat_id)
+        
+        await message.answer(language_manager.get_text("help_button", user_lang))
+        welcome_text = language_manager.get_text(
+            "start_welcome", 
+            user_lang, 
+            user_name=user.first_name, 
+            bot_name=c.me.first_name, 
+            version=__version__
         )
         edit = await message.edit_message_caption(welcome_text, reply_markup=HelpMenu)
         if isinstance(edit, types.Error):
@@ -109,61 +112,29 @@ async def callback_query_help(c: Client, message: types.UpdateNewCallbackQuery) 
         )
         return
 
+    # Get user language for help categories
+    chat_id = message.chat_id
+    user_lang = await language_manager.get_language(user_id, chat_id)
+    
     help_categories = {
         "help_user": {
-            "title": "🎧 User Commands",
-            "content": (
-                "<b>▶️ Playback:</b>\n"
-                "• <code>/play [song]</code> — Play audio in VC\n"
-                "• <code>/vplay [video]</code> — Play video in VC\n"
-                "<b>🛠 Utilities:</b>\n"
-                "• <code>/start</code> — Intro message\n"
-                "• <code>/privacy</code> — Privacy policy\n"
-                "• <code>/queue</code> — View track queue\n"
-            ),
+            "title": language_manager.get_text("help_user_title", user_lang),
+            "content": language_manager.get_text("help_user_content", user_lang),
             "markup": BackHelpMenu,
         },
         "help_admin": {
-            "title": "⚙️ Admin Commands",
-            "content": (
-                "<b>🎛 Playback Controls:</b>\n"
-                "• <code>/skip</code> — Skip current track\n"
-                "• <code>/pause</code> — Pause playback\n"
-                "• <code>/resume</code> — Resume playback\n"
-                "• <code>/seek [sec]</code> — Jump to a position\n"
-                "• <code>/volume [1-200]</code> — Set playback volume\n\n"
-                "<b>📋 Queue Management:</b>\n"
-                "• <code>/remove [x]</code> — Remove track number x\n"
-                "• <code>/clear</code> — Clear the entire queue\n"
-                "• <code>/loop [0-10]</code> — Repeat queue x times"
-                "<b>👑 Permissions:</b>\n"
-                "• <code>/auth [reply]</code> — Grant admin access\n"
-                "• <code>/unauth [reply]</code> — Revoke admin access\n"
-                "• <code>/authlist</code> — View authorized users\n\n"
-            ),
+            "title": language_manager.get_text("help_admin_title", user_lang),
+            "content": language_manager.get_text("help_admin_content", user_lang),
             "markup": BackHelpMenu,
         },
         "help_owner": {
-            "title": "🔐 Owner Commands",
-            "content": (
-                "<b>⚙️ Settings:</b>\n"
-                "• <code>/buttons</code> — Toggle control buttons\n"
-                "• <code>/thumb</code> — Toggle thumbnail mode"
-            ),
+            "title": language_manager.get_text("help_owner_title", user_lang),
+            "content": language_manager.get_text("help_owner_content", user_lang),
             "markup": BackHelpMenu,
         },
         "help_devs": {
-            "title": "🛠 Developer Tools",
-            "content": (
-                "<b>📊 System Tools:</b>\n"
-                "• <code>/stats</code> — Show usage stats\n"
-                "• <code>/logger</code> — Toggle log mode\n"
-                "• <code>/broadcast</code> — Send a message to all\n\n"
-                "<b>🧹 Maintenance:</b>\n"
-                "• <code>/activevc</code> — Show active voice chats\n"
-                "• <code>/clearallassistants</code> — Remove all assistants data from DB\n"
-                "• <code>/autoend</code> — Enable auto-leave when VC is empty"
-            ),
+            "title": language_manager.get_text("help_devs_title", user_lang),
+            "content": language_manager.get_text("help_devs_content", user_lang),
             "markup": BackHelpMenu,
         },
     }

@@ -1,10 +1,11 @@
 #  Copyright (c) 2025 AshokShau
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 #  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
 
 from pytdbot import Client, types
 
-from TgMusic.core import Filter, chat_cache, call
+from TgMusic.core import Filter, language_manager, chat_cache, call
 from TgMusic.modules.utils import sec_to_min
 
 
@@ -27,8 +28,9 @@ async def queue_info(_: Client, msg: types.Message) -> None:
 
     chat = await msg.getChat()
     if isinstance(chat, types.Error):
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
         await msg.reply_text(
-            f"⚠️ <b>Error:</b> Could not fetch chat details\n<code>{chat.message}</code>"
+            language_manager.get_text("queue_chat_error", user_lang, error=chat.message)
         )
         return
 

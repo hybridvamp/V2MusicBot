@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 
 from pytdbot import Client, types
-from TgMusic.core import chat_cache, call, db, config
+from TgMusic.core import chat_cache, language_manager, call, db, config
 from TgMusic.logger import LOGGER
 from pyrogram import errors
 from pyrogram.client import Client as PyroClient
@@ -138,7 +138,7 @@ class OptimizedInactiveCallManager:
                 try:
                     await self.bot.sendTextMessage(
                         chat_id, 
-                        "⚠️ No active listeners. Leaving voice chat..."
+                        language_manager.get_text("jobs_no_listeners", "en-US")
                     )
                     await self._execute_with_timeout(call.end, chat_id)
                     self.metrics.record_vc_end()

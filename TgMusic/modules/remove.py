@@ -1,10 +1,11 @@
 #  Copyright (c) 2025 AshokShau
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 #  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
 
 from pytdbot import Client, types
 
-from TgMusic.core import Filter, chat_cache
+from TgMusic.core import Filter, language_manager, chat_cache
 from TgMusic.core.admins import is_admin
 from .utils.play_helpers import extract_argument
 
@@ -36,7 +37,8 @@ async def remove_song(c: Client, msg: types.Message) -> None:
     try:
         track_num = int(args)
     except ValueError:
-        await msg.reply_text("⚠️ Please enter a valid track number.")
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        await msg.reply_text(language_manager.get_text("remove_invalid_number", user_lang))
         return None
 
     _queue = chat_cache.get_queue(chat_id)
@@ -46,14 +48,16 @@ async def remove_song(c: Client, msg: types.Message) -> None:
         return None
 
     if track_num <= 0 or track_num > len(_queue):
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
         await msg.reply_text(
-            f"⚠️ Invalid track number. Please choose between 1 and {len(_queue)}."
+            language_manager.get_text("remove_range_error", user_lang, count=len(_queue))
         )
         return None
 
     removed_track = chat_cache.remove_track(chat_id, track_num)
+    user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
     reply = await msg.reply_text(
-        f"✅ Track <b>{removed_track.name[:45]}</b> removed by {await msg.mention()}"
+        language_manager.get_text("remove_success", user_lang, track=removed_track.name[:45], user=await msg.mention())
     )
 
     if isinstance(reply, types.Error):

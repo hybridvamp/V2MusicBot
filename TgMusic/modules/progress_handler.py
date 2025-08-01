@@ -1,13 +1,14 @@
 #  Copyright (c) 2025 AshokShau
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 #  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
 
 import math
 import time
 
 from pytdbot import Client, types
 
-from TgMusic.core import tg
+from TgMusic.core import tg, language_manager
 from TgMusic.logger import LOGGER
 from TgMusic.core.admins import is_admin
 
@@ -307,8 +308,9 @@ async def _handle_play_c_data(
         None
     """
     if not await is_admin(chat_id, user_id):
+        user_lang = await language_manager.get_language(user_id, chat_id)
         await message.answer(
-            "⚠️ You must be an admin to use this command.", show_alert=True
+            language_manager.get_text("progress_admin_required", user_lang), show_alert=True
         )
         return
 
