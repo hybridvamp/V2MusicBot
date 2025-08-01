@@ -47,14 +47,14 @@ class BotConfig:
 
         self.SUPPORT_GROUP: str = os.getenv(
             "SUPPORT_GROUP", "https://t.me/GuardxSupport"
-        )
+        ) or "https://t.me/GuardxSupport"
         self.SUPPORT_CHANNEL: str = os.getenv(
             "SUPPORT_CHANNEL", "https://t.me/FallenProjects"
-        )
+        ) or "https://t.me/FallenProjects"
 
         self.START_IMG: str = os.getenv(
             "START_IMG", "https://i.pinimg.com/1200x/e8/89/d3/e889d394e0afddfb0eb1df0ab663df95.jpg"
-        )
+        ) or "https://i.pinimg.com/1200x/e8/89/d3/e889d394e0afddfb0eb1df0ab663df95.jpg"
 
         self.IGNORE_BACKGROUND_UPDATES: bool = self._get_env_bool(
             "IGNORE_BACKGROUND_UPDATES", True

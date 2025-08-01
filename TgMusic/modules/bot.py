@@ -11,6 +11,8 @@ from TgMusic.core import (
     chat_cache,
     call,
     Filter,
+    config,
+    db,
 )
 from TgMusic.core.admins import load_admin_cache
 from TgMusic.modules.utils import sec_to_min
@@ -111,9 +113,9 @@ async def reload_cmd(c: Client, message: types.Message) -> None:
         await reply.edit_text(ub.message)
         return None
 
-    chat_invite_cache.pop(chat_id, None)
+    await chat_invite_cache.delete(chat_id)
     user_key = f"{chat_id}:{ub.me.id}"
-    user_status_cache.pop(user_key, None)
+    await user_status_cache.delete(user_key)
 
     if not chat_cache.is_active(chat_id):
         chat_cache.clear_chat(chat_id)
@@ -165,3 +167,87 @@ async def ping_cmd(client: Client, message: types.Message) -> None:
     if isinstance(done, types.Error):
         client.logger.warning(f"Error sending message: {done}")
     return None
+
+
+@Client.on_message(filters=Filter.command("performance"))
+async def performance_cmd(client: Client, message: types.Message) -> None:
+    """
+    Handle the /performance command to show comprehensive system performance.
+    """
+    if message.from_id not in config.DEVS:
+        return
+    
+    reply_msg = await message.reply_text("📊 Gathering performance metrics...")
+    
+    try:
+        # Database statistics
+        db_stats = await db.get_database_stats()
+        
+        # Cache statistics
+        cache_stats = chat_cache.get_cache_stats()
+        
+        # API statistics (if available)
+        from TgMusic.core._api import OptimizedApiData
+        try:
+            api_instance = OptimizedApiData()
+            api_stats = await api_instance.get_api_stats()
+        except Exception:
+            api_stats = {"error": "API stats unavailable"}
+        
+        # System info
+        import psutil
+        cpu_percent = psutil.cpu_percent(interval=1)
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+        
+        # Uptime
+        uptime = datetime.now() - StartTime
+        uptime_str = str(uptime).split(".")[0]
+        
+        # Get call ping info
+        try:
+            call_ping = await call.ping()
+            call_ping_info = f"{call_ping:.2f} ms" if isinstance(call_ping, (int, float)) else "N/A"
+        except Exception:
+            call_ping_info = "N/A"
+        
+        response = f"""
+🔥 **TgMusicBot Performance Dashboard**
+
+⏱️ **System Info:**
+• Uptime: `{uptime_str}`
+• CPU Usage: `{cpu_percent:.1f}%`
+• Memory: `{memory.percent:.1f}%` ({memory.used // (1024**3):.1f}GB / {memory.total // (1024**3):.1f}GB)
+• Disk: `{disk.percent:.1f}%` ({disk.used // (1024**3):.1f}GB / {disk.total // (1024**3):.1f}GB)
+
+💾 **Database Performance:**
+• Connection: `{'✅ Healthy' if db_stats.get('connection_healthy') else '❌ Issues'}`
+• Cache Hit Rate: `{db_stats.get('cache_hit_rate', 'N/A')}`
+• Total Queries: `{db_stats.get('total_queries', 0)}`
+• Avg Query Time: `{db_stats.get('avg_query_time', 'N/A')}`
+
+🎵 **Music Cache:**
+• Total Chats: `{cache_stats.get('total_chats', 0)}`
+• Active Chats: `{cache_stats.get('active_chats', 0)}`
+• Cache Hit Rate: `{cache_stats.get('hit_rate', 'N/A')}`
+• Avg Queue Length: `{cache_stats.get('average_queue_length', 0):.1f}`
+
+🌐 **API Performance:**
+• Requests Made: `{api_stats.get('requests_made', 0)}`
+• Cache Hit Rate: `{api_stats.get('cache_hit_rate', 'N/A')}`
+• Avg Response Time: `{api_stats.get('avg_response_time', 'N/A')}`
+• Errors: `{api_stats.get('errors', 0)}`
+
+📊 **Call Stats:**
+• Call Ping: `{call_ping_info}`
+• Active VCs: `{len(chat_cache.get_active_chats())}`
+"""
+        
+        done = await reply_msg.edit_text(response, disable_web_page_preview=True)
+        if isinstance(done, types.Error):
+            client.logger.warning(f"Error sending performance stats: {done}")
+            
+    except Exception as e:
+        error_msg = f"❌ Error gathering performance metrics: {str(e)}"
+        await reply_msg.edit_text(error_msg)
+        client.logger.error("Performance command error: %s", e)

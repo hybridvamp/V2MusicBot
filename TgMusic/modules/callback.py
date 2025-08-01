@@ -16,7 +16,7 @@ from ..core import DownloaderWrapper
 async def callback_query(c: Client, message: types.UpdateNewCallbackQuery) -> None:
     """Handle all playback control callback queries (skip, stop, pause, resume)."""
     data = message.payload.data.decode()
-    user_id = message.sender_user_id
+    user_id = message.from_id
 
     # Retrieve message and user info with error handling
     get_msg = await message.getMessage()

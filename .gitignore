@@ -5,3 +5,4 @@ __pycache__/
 /TgMusic/cookies
 /tgmusicbot.egg-info
 *.log
+cookies.txt

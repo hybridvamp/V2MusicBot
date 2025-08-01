@@ -83,7 +83,7 @@ async def handle_bot_join(client: Client, chat_id: int) -> None:
         return
 
     if invite_link := getattr(chat_info.invite_link, "invite_link", None):
-        chat_invite_cache[chat_id] = invite_link
+        await chat_invite_cache.set(chat_id, invite_link)
 
 
 @Client.on_updateChatMember()
@@ -210,7 +210,7 @@ async def _update_user_status_cache(
 
     if user_id == ub.me.id:
         cache_key = f"{chat_id}:{ub.me.id}"
-        user_status_cache[cache_key] = status
+        await user_status_cache.set(cache_key, status)
 
 
 @Client.on_updateNewMessage(position=1)

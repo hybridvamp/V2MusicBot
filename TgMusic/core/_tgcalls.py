@@ -707,7 +707,7 @@ class Calls:
 
         user_id = client.me.id
         cache_key = f"{chat_id}:{user_id}"
-        user_status = user_status_cache.get(cache_key)
+        user_status = await user_status_cache.get(cache_key)
         if not user_status:
             user = await self.bot.getChatMember(
                 chat_id=chat_id, member_id=types.MessageSenderUser(user_id)
@@ -719,7 +719,7 @@ class Calls:
                 return types.ChatMemberStatusLeft()
 
             user_status = user.status
-            user_status_cache[cache_key] = user_status
+            await user_status_cache.set(cache_key, user_status)
 
         return user_status
 
@@ -769,13 +769,13 @@ class Calls:
                 code=400, message=f"Failed to get invite link for chat {chat_id}"
             )
 
-        chat_invite_cache[chat_id] = invite_link
+        await chat_invite_cache.set(chat_id, invite_link)
         invite_link = invite_link.replace("https://t.me/+", "https://t.me/joinchat/")
         user_id = client.me.id
         cache_key = f"{chat_id}:{user_id}"
         try:
             await client.join_chat(invite_link)
-            user_status_cache[cache_key] = types.ChatMemberStatusMember()
+            await user_status_cache.set(cache_key, types.ChatMemberStatusMember())
             return types.Ok()
         except errors.InviteRequestSent:
             ok = await self.bot.processChatJoinRequest(
@@ -783,10 +783,10 @@ class Calls:
             )
             if isinstance(ok, types.Error):
                 return ok
-            user_status_cache[cache_key] = types.ChatMemberStatusMember()
+            await user_status_cache.set(cache_key, types.ChatMemberStatusMember())
             return ok
         except errors.UserAlreadyParticipant:
-            user_status_cache[cache_key] = types.ChatMemberStatusMember()
+            await user_status_cache.set(cache_key, types.ChatMemberStatusMember())
             return types.Ok()
         except errors.InviteHashExpired:
             return types.Error(

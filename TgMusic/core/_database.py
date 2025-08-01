@@ -2,66 +2,271 @@
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 #  Part of the TgMusicBot project. All rights reserved where applicable.
 
-from typing import Optional
+import asyncio
+import time
+from typing import Optional, List, Dict, Any, Union
+from contextlib import asynccontextmanager
 
-from cachetools import TTLCache
-from pymongo import AsyncMongoClient
-from pymongo.errors import ConnectionFailure
+from cachetools import TTLCache, LRUCache
+from pymongo import AsyncMongoClient, ReturnDocument
+from pymongo.errors import (
+    ConnectionFailure, 
+    ServerSelectionTimeoutError, 
+    AutoReconnect,
+    DuplicateKeyError,
+    BulkWriteError
+)
+from pymongo.operations import UpdateOne, InsertOne
 
 from TgMusic.logger import LOGGER
 from ._config import config
 
 
-class Database:
+class DatabaseMetrics:
+    """Performance metrics tracking for database operations."""
+    
     def __init__(self):
-        self.mongo_client = AsyncMongoClient(config.MONGO_URI)
+        self.query_count = 0
+        self.cache_hits = 0
+        self.cache_misses = 0
+        self.connection_errors = 0
+        self.retry_count = 0
+        self.avg_query_time = 0.0
+        self._query_times = []
+
+    def record_query(self, duration: float):
+        self.query_count += 1
+        self._query_times.append(duration)
+        if len(self._query_times) > 100:  # Keep last 100 queries
+            self._query_times.pop(0)
+        self.avg_query_time = sum(self._query_times) / len(self._query_times)
+
+    def cache_hit(self):
+        self.cache_hits += 1
+
+    def cache_miss(self):
+        self.cache_misses += 1
+
+    def connection_error(self):
+        self.connection_errors += 1
+
+    def retry(self):
+        self.retry_count += 1
+
+    @property
+    def cache_hit_rate(self) -> float:
+        total = self.cache_hits + self.cache_misses
+        return (self.cache_hits / total * 100) if total > 0 else 0.0
+
+    def get_stats(self) -> Dict[str, Any]:
+        return {
+            "total_queries": self.query_count,
+            "cache_hit_rate": f"{self.cache_hit_rate:.2f}%",
+            "avg_query_time": f"{self.avg_query_time:.3f}s",
+            "connection_errors": self.connection_errors,
+            "retries": self.retry_count
+        }
+
+
+class Database:
+    """High-performance database layer with advanced caching and error handling."""
+    
+    # Connection settings
+    MAX_POOL_SIZE = 10
+    MIN_POOL_SIZE = 5
+    MAX_IDLE_TIME_MS = 30000
+    CONNECT_TIMEOUT_MS = 5000
+    SERVER_SELECTION_TIMEOUT_MS = 5000
+    
+    # Retry settings
+    MAX_RETRIES = 3
+    RETRY_DELAY = 1.0
+    BACKOFF_FACTOR = 2.0
+    
+    # Cache settings
+    CHAT_CACHE_SIZE = 2000
+    CHAT_CACHE_TTL = 1800  # 30 minutes
+    BOT_CACHE_SIZE = 500
+    BOT_CACHE_TTL = 3600   # 1 hour
+    USER_CACHE_SIZE = 5000
+    USER_CACHE_TTL = 1200  # 20 minutes
+
+    def __init__(self):
+        self._initialize_client()
+        self._initialize_databases()
+        self._initialize_caches()
+        self.metrics = DatabaseMetrics()
+        self._connection_healthy = True
+        self._last_health_check = time.time()
+        self._health_check_interval = 30  # seconds
+        self._connection_monitor_task = None
+
+    def _initialize_client(self):
+        """Initialize MongoDB client with optimized settings."""
+        self.mongo_client = AsyncMongoClient(
+            config.MONGO_URI,
+            maxPoolSize=self.MAX_POOL_SIZE,
+            minPoolSize=self.MIN_POOL_SIZE,
+            maxIdleTimeMS=self.MAX_IDLE_TIME_MS,
+            connectTimeoutMS=self.CONNECT_TIMEOUT_MS,
+            serverSelectionTimeoutMS=self.SERVER_SELECTION_TIMEOUT_MS,
+            retryWrites=True,
+            retryReads=True,
+            w="majority",
+            readPreference="primaryPreferred",
+            heartbeatFrequencyMS=10000,
+            socketTimeoutMS=20000,
+        )
+
+    def _initialize_databases(self):
+        """Initialize database collections."""
         _db = self.mongo_client[config.DB_NAME]
         self.chat_db = _db["chats"]
         self.users_db = _db["users"]
         self.bot_db = _db["bot"]
         self.language = _db["language"]
 
-        self.chat_cache = TTLCache(maxsize=1000, ttl=1200)
-        self.bot_cache = TTLCache(maxsize=1000, ttl=1200)
+    def _initialize_caches(self):
+        """Initialize optimized multi-level caching."""
+        # L1 Cache: Frequently accessed data (LRU)
+        self.chat_cache_l1 = LRUCache(maxsize=500)
+        self.bot_cache_l1 = LRUCache(maxsize=100)
+        
+        # L2 Cache: Time-based eviction (TTL)  
+        self.chat_cache = TTLCache(maxsize=self.CHAT_CACHE_SIZE, ttl=self.CHAT_CACHE_TTL)
+        self.bot_cache = TTLCache(maxsize=self.BOT_CACHE_SIZE, ttl=self.BOT_CACHE_TTL)
+        self.user_cache = TTLCache(maxsize=self.USER_CACHE_SIZE, ttl=self.USER_CACHE_TTL)
+
+    async def _execute_with_retry(self, operation, *args, **kwargs):
+        """Execute database operation with exponential backoff retry."""
+        delay = self.RETRY_DELAY
+        
+        for attempt in range(self.MAX_RETRIES):
+            try:
+                start_time = time.time()
+                result = await operation(*args, **kwargs)
+                duration = time.time() - start_time
+                self.metrics.record_query(duration)
+                return result
+                
+            except (ConnectionFailure, ServerSelectionTimeoutError, AutoReconnect) as e:
+                self.metrics.connection_error()
+                self.metrics.retry()
+                self._connection_healthy = False
+                
+                if attempt == self.MAX_RETRIES - 1:
+                    LOGGER.error(f"Database operation failed after {self.MAX_RETRIES} attempts: {e}")
+                    raise RuntimeError(f"Database operation failed: {str(e)}") from e
+                
+                LOGGER.warning(f"Database operation failed (attempt {attempt + 1}), retrying in {delay}s: {e}")
+                await asyncio.sleep(delay)
+                delay *= self.BACKOFF_FACTOR
+                
+            except Exception as e:
+                LOGGER.error(f"Unexpected database error: {e}", exc_info=True)
+                raise
+
+    async def _check_connection_health(self):
+        """Periodically check database connection health."""
+        while True:
+            try:
+                await asyncio.sleep(self._health_check_interval)
+                await self.mongo_client.admin.command("ping")
+                self._connection_healthy = True
+                self._last_health_check = time.time()
+            except Exception as e:
+                self._connection_healthy = False
+                LOGGER.warning(f"Database health check failed: {e}")
 
     async def ping(self) -> None:
+        """Test database connectivity with enhanced error handling."""
         try:
-            await self.mongo_client.aconnect()
-            await self.mongo_client.admin.command("ping")
-            LOGGER.info("Database connection completed.")
-        except ConnectionFailure as e:
-            raise ConnectionFailure(
-                "Database connection failed : Server not available"
-            ) from e
+            await self._execute_with_retry(self.mongo_client.admin.command, "ping")
+            LOGGER.info("Database connection completed successfully.")
+            
+            # Start connection monitoring
+            if not self._connection_monitor_task:
+                self._connection_monitor_task = asyncio.create_task(self._check_connection_health())
+                
         except Exception as e:
-            LOGGER.error("Database connection failed: %s", e)
-            raise RuntimeError(f"Database connection failed.{str(e)}") from e
+            LOGGER.error("Database ping failed: %s", e)
+            raise RuntimeError(f"Database connection failed: {str(e)}") from e
 
     async def get_chat(self, chat_id: int) -> Optional[dict]:
+        """Get chat with multi-level caching and optimized queries."""
+        # Check L1 cache first (fastest)
+        if chat_id in self.chat_cache_l1:
+            self.metrics.cache_hit()
+            return self.chat_cache_l1[chat_id]
+        
+        # Check L2 cache
         if chat_id in self.chat_cache:
-            return self.chat_cache[chat_id]
+            self.metrics.cache_hit()
+            chat_data = self.chat_cache[chat_id]
+            self.chat_cache_l1[chat_id] = chat_data  # Promote to L1
+            return chat_data
+        
+        self.metrics.cache_miss()
+        
         try:
-            if chat := await self.chat_db.find_one({"_id": chat_id}):
+            chat = await self._execute_with_retry(
+                self.chat_db.find_one, 
+                {"_id": chat_id},
+                {"_id": 1, "play_type": 1, "assistant": 1, "auth_users": 1, "buttons": 1, "thumb": 1}
+            )
+            
+            if chat:
                 self.chat_cache[chat_id] = chat
+                self.chat_cache_l1[chat_id] = chat
+            
             return chat
+            
         except Exception as e:
-            LOGGER.warning("Error getting chat: %s", e)
+            LOGGER.warning("Error getting chat %s: %s", chat_id, e)
             return None
 
     async def add_chat(self, chat_id: int) -> None:
+        """Add chat with optimized upsert and caching."""
         if await self.get_chat(chat_id) is None:
-            LOGGER.info("Added chat: %s", chat_id)
-            await self.chat_db.update_one(
-                {"_id": chat_id}, {"$setOnInsert": {}}, upsert=True
-            )
+            try:
+                await self._execute_with_retry(
+                    self.chat_db.update_one,
+                    {"_id": chat_id}, 
+                    {"$setOnInsert": {"created_at": time.time()}}, 
+                    upsert=True
+                )
+                
+                # Update cache
+                new_chat = {"_id": chat_id, "created_at": time.time()}
+                self.chat_cache[chat_id] = new_chat
+                self.chat_cache_l1[chat_id] = new_chat
+                
+                LOGGER.info("Added chat: %s", chat_id)
+                
+            except DuplicateKeyError:
+                pass  # Chat already exists
+            except Exception as e:
+                LOGGER.error("Error adding chat %s: %s", chat_id, e)
 
-    async def _update_chat_field(self, chat_id: int, key: str, value) -> None:
-        await self.chat_db.update_one(
-            {"_id": chat_id}, {"$set": {key: value}}, upsert=True
-        )
-        cached = self.chat_cache.get(chat_id, {})
-        cached[key] = value
-        self.chat_cache[chat_id] = cached
+    async def _update_chat_field(self, chat_id: int, key: str, value: Any) -> None:
+        """Update chat field with optimized caching strategy."""
+        try:
+            await self._execute_with_retry(
+                self.chat_db.update_one,
+                {"_id": chat_id}, 
+                {"$set": {key: value}}, 
+                upsert=True
+            )
+            
+            # Update all cache levels
+            for cache in [self.chat_cache, self.chat_cache_l1]:
+                if chat_id in cache:
+                    cache[chat_id][key] = value
+                else:
+                    cache[chat_id] = {key: value}
+                    
+        except Exception as e:
+            LOGGER.error("Error updating chat field %s for %s: %s", key, chat_id, e)
 
     async def get_play_type(self, chat_id: int) -> int:
         chat = await self.get_chat(chat_id)
@@ -77,42 +282,108 @@ class Database:
     async def set_assistant(self, chat_id: int, assistant: str) -> None:
         await self._update_chat_field(chat_id, "assistant", assistant)
 
+    async def bulk_update_chats(self, updates: List[Dict[str, Any]]) -> int:
+        """Perform bulk chat updates for better performance."""
+        if not updates:
+            return 0
+            
+        try:
+            operations = [
+                UpdateOne(
+                    {"_id": update["chat_id"]},
+                    {"$set": update["data"]},
+                    upsert=True
+                ) for update in updates
+            ]
+            
+            result = await self._execute_with_retry(
+                self.chat_db.bulk_write,
+                operations,
+                ordered=False
+            )
+            
+            # Update cache for successful operations
+            for update in updates:
+                chat_id = update["chat_id"]
+                for cache in [self.chat_cache, self.chat_cache_l1]:
+                    if chat_id in cache:
+                        cache[chat_id].update(update["data"])
+            
+            LOGGER.info("Bulk updated %d chats", result.modified_count)
+            return result.modified_count
+            
+        except BulkWriteError as e:
+            LOGGER.error("Bulk write error: %s", e.details)
+            return 0
+        except Exception as e:
+            LOGGER.error("Error in bulk update: %s", e)
+            return 0
+
     async def clear_all_assistants(self) -> int:
-        # Clear assistants from all chats in the database
-        result = await self.chat_db.update_many(
-            {"assistant": {"$exists": True}}, {"$unset": {"assistant": ""}}
-        )
+        """Clear all assistants with optimized bulk operation."""
+        try:
+            result = await self._execute_with_retry(
+                self.chat_db.update_many,
+                {"assistant": {"$exists": True}}, 
+                {"$unset": {"assistant": ""}}
+            )
 
-        # Clear assistants from all cached chats
-        for chat_id in list(self.chat_cache.keys()):
-            if "assistant" in self.chat_cache[chat_id]:
-                self.chat_cache[chat_id]["assistant"] = None
+            # Clear from all cache levels
+            for cache in [self.chat_cache, self.chat_cache_l1]:
+                for chat_id in list(cache.keys()):
+                    if isinstance(cache[chat_id], dict) and "assistant" in cache[chat_id]:
+                        cache[chat_id]["assistant"] = None
 
-        LOGGER.info(f"Cleared assistants from {result.modified_count} chats")
-        return result.modified_count
+            LOGGER.info(f"Cleared assistants from {result.modified_count} chats")
+            return result.modified_count
+            
+        except Exception as e:
+            LOGGER.error("Error clearing assistants: %s", e)
+            return 0
 
     async def remove_assistant(self, chat_id: int) -> None:
         await self._update_chat_field(chat_id, "assistant", None)
 
     async def add_auth_user(self, chat_id: int, auth_user: int) -> None:
-        await self.chat_db.update_one(
-            {"_id": chat_id}, {"$addToSet": {"auth_users": auth_user}}, upsert=True
-        )
-        chat = await self.get_chat(chat_id)
-        auth_users = chat.get("auth_users", [])
-        if auth_user not in auth_users:
-            auth_users.append(auth_user)
-        self.chat_cache[chat_id]["auth_users"] = auth_users
+        """Add authorized user with atomic operation."""
+        try:
+            await self._execute_with_retry(
+                self.chat_db.update_one,
+                {"_id": chat_id}, 
+                {"$addToSet": {"auth_users": auth_user}}, 
+                upsert=True
+            )
+            
+            # Update cache
+            for cache in [self.chat_cache, self.chat_cache_l1]:
+                if chat_id in cache:
+                    auth_users = cache[chat_id].get("auth_users", [])
+                    if auth_user not in auth_users:
+                        auth_users.append(auth_user)
+                        cache[chat_id]["auth_users"] = auth_users
+                        
+        except Exception as e:
+            LOGGER.error("Error adding auth user %s to %s: %s", auth_user, chat_id, e)
 
     async def remove_auth_user(self, chat_id: int, auth_user: int) -> None:
-        await self.chat_db.update_one(
-            {"_id": chat_id}, {"$pull": {"auth_users": auth_user}}
-        )
-        chat = await self.get_chat(chat_id)
-        auth_users = chat.get("auth_users", [])
-        if auth_user in auth_users:
-            auth_users.remove(auth_user)
-        self.chat_cache[chat_id]["auth_users"] = auth_users
+        """Remove authorized user with atomic operation."""
+        try:
+            await self._execute_with_retry(
+                self.chat_db.update_one,
+                {"_id": chat_id}, 
+                {"$pull": {"auth_users": auth_user}}
+            )
+            
+            # Update cache
+            for cache in [self.chat_cache, self.chat_cache_l1]:
+                if chat_id in cache and "auth_users" in cache[chat_id]:
+                    auth_users = cache[chat_id]["auth_users"]
+                    if auth_user in auth_users:
+                        auth_users.remove(auth_user)
+                        cache[chat_id]["auth_users"] = auth_users
+                        
+        except Exception as e:
+            LOGGER.error("Error removing auth user %s from %s: %s", auth_user, chat_id, e)
 
     async def reset_auth_users(self, chat_id: int) -> None:
         await self._update_chat_field(chat_id, "auth_users", [])
@@ -139,74 +410,265 @@ class Database:
         return chat.get("thumb", True) if chat else True
 
     async def remove_chat(self, chat_id: int) -> None:
-        await self.chat_db.delete_one({"_id": chat_id})
-        self.chat_cache.pop(chat_id, None)
+        """Remove chat with cache cleanup."""
+        try:
+            await self._execute_with_retry(
+                self.chat_db.delete_one, 
+                {"_id": chat_id}
+            )
+            
+            # Remove from all cache levels
+            self.chat_cache.pop(chat_id, None)
+            self.chat_cache_l1.pop(chat_id, None)
+            
+        except Exception as e:
+            LOGGER.error("Error removing chat %s: %s", chat_id, e)
 
     async def add_user(self, user_id: int) -> None:
-        await self.users_db.update_one(
-            {"_id": user_id}, {"$setOnInsert": {}}, upsert=True
-        )
+        """Add user with caching."""
+        if user_id not in self.user_cache:
+            try:
+                await self._execute_with_retry(
+                    self.users_db.update_one,
+                    {"_id": user_id}, 
+                    {"$setOnInsert": {"created_at": time.time()}}, 
+                    upsert=True
+                )
+                self.user_cache[user_id] = True
+                
+            except Exception as e:
+                LOGGER.error("Error adding user %s: %s", user_id, e)
 
     async def remove_user(self, user_id: int) -> None:
-        await self.users_db.delete_one({"_id": user_id})
+        """Remove user with cache cleanup."""
+        try:
+            await self._execute_with_retry(
+                self.users_db.delete_one, 
+                {"_id": user_id}
+            )
+            self.user_cache.pop(user_id, None)
+            
+        except Exception as e:
+            LOGGER.error("Error removing user %s: %s", user_id, e)
 
     async def is_user_exist(self, user_id: int) -> bool:
-        return await self.users_db.find_one({"_id": user_id}) is not None
+        """Check user existence with caching."""
+        if user_id in self.user_cache:
+            self.metrics.cache_hit()
+            return True
+            
+        self.metrics.cache_miss()
+        try:
+            exists = await self._execute_with_retry(
+                self.users_db.find_one, 
+                {"_id": user_id}
+            ) is not None
+            
+            if exists:
+                self.user_cache[user_id] = True
+            return exists
+            
+        except Exception as e:
+            LOGGER.error("Error checking user existence %s: %s", user_id, e)
+            return False
 
-    async def get_all_users(self) -> list[int]:
-        return [user["_id"] async for user in self.users_db.find()]
+    async def get_all_users(self) -> List[int]:
+        """Get all users with optimized projection."""
+        try:
+            return [
+                user["_id"] async for user in 
+                self.users_db.find({}, {"_id": 1})
+            ]
+        except Exception as e:
+            LOGGER.error("Error getting all users: %s", e)
+            return []
 
-    async def get_all_chats(self) -> list[int]:
-        return [chat["_id"] async for chat in self.chat_db.find()]
+    async def get_all_chats(self) -> List[int]:
+        """Get all chats with optimized projection."""
+        try:
+            return [
+                chat["_id"] async for chat in 
+                self.chat_db.find({}, {"_id": 1})
+            ]
+        except Exception as e:
+            LOGGER.error("Error getting all chats: %s", e)
+            return []
 
     async def get_logger_status(self, bot_id: int) -> bool:
-        if bot_id in self.bot_cache and self.bot_cache[bot_id].get("logger"):
-            return self.bot_cache[bot_id].get("logger")
+        """Get logger status with optimized caching."""
+        # Check L1 cache
+        if bot_id in self.bot_cache_l1:
+            self.metrics.cache_hit()
+            return self.bot_cache_l1[bot_id].get("logger", False)
+        
+        # Check L2 cache
+        if bot_id in self.bot_cache:
+            self.metrics.cache_hit()
+            status = self.bot_cache[bot_id].get("logger", False)
+            self.bot_cache_l1[bot_id] = {"logger": status}
+            return status
 
-        bot_data = await self.bot_db.find_one({"_id": bot_id})
-        status = bot_data.get("logger", False) if bot_data else False
+        self.metrics.cache_miss()
+        try:
+            bot_data = await self._execute_with_retry(
+                self.bot_db.find_one,
+                {"_id": bot_id},
+                {"logger": 1}
+            )
+            status = bot_data.get("logger", False) if bot_data else False
 
-        # Update cache
-        cached = self.bot_cache.get(bot_id, {})
-        cached["logger"] = status
-        self.bot_cache[bot_id] = cached
+            # Update both cache levels
+            cache_data = {"logger": status}
+            self.bot_cache[bot_id] = cache_data
+            self.bot_cache_l1[bot_id] = cache_data
 
-        return status
+            return status
+            
+        except Exception as e:
+            LOGGER.error("Error getting logger status for %s: %s", bot_id, e)
+            return False
 
     async def set_logger_status(self, bot_id: int, status: bool) -> None:
-        await self.bot_db.update_one(
-            {"_id": bot_id}, {"$set": {"logger": status}}, upsert=True
-        )
+        """Set logger status with cache update."""
+        try:
+            await self._execute_with_retry(
+                self.bot_db.update_one,
+                {"_id": bot_id}, 
+                {"$set": {"logger": status}}, 
+                upsert=True
+            )
 
-        # Update cache
-        cached = self.bot_cache.get(bot_id, {})
-        cached["logger"] = status
-        self.bot_cache[bot_id] = cached
+            # Update both cache levels
+            cache_data = {"logger": status}
+            self.bot_cache[bot_id] = cache_data
+            self.bot_cache_l1[bot_id] = cache_data
+            
+        except Exception as e:
+            LOGGER.error("Error setting logger status for %s: %s", bot_id, e)
 
     async def get_auto_end(self, bot_id: int) -> bool:
-        if bot_id in self.bot_cache and self.bot_cache[bot_id].get("auto_end"):
-            return self.bot_cache[bot_id].get("auto_end")
+        """Get auto-end status with caching."""
+        # Check L1 cache
+        if bot_id in self.bot_cache_l1:
+            self.metrics.cache_hit()
+            return self.bot_cache_l1[bot_id].get("auto_end", True)
+        
+        # Check L2 cache
+        if bot_id in self.bot_cache:
+            self.metrics.cache_hit()
+            status = self.bot_cache[bot_id].get("auto_end", True)
+            self.bot_cache_l1[bot_id] = {"auto_end": status}
+            return status
 
-        bot_data = await self.bot_db.find_one({"_id": bot_id})
-        status = bot_data.get("auto_end", True) if bot_data else True
-        # Update cache
-        cached = self.bot_cache.get(bot_id, {})
-        cached["auto_end"] = status
-        self.bot_cache[bot_id] = cached
-        return status
+        self.metrics.cache_miss()
+        try:
+            bot_data = await self._execute_with_retry(
+                self.bot_db.find_one,
+                {"_id": bot_id},
+                {"auto_end": 1}
+            )
+            status = bot_data.get("auto_end", True) if bot_data else True
+
+            # Update cache
+            cache_data = {"auto_end": status}
+            self.bot_cache[bot_id] = cache_data
+            self.bot_cache_l1[bot_id] = cache_data
+
+            return status
+            
+        except Exception as e:
+            LOGGER.error("Error getting auto_end status for %s: %s", bot_id, e)
+            return True
 
     async def set_auto_end(self, bot_id: int, status: bool) -> None:
-        await self.bot_db.update_one(
-            {"_id": bot_id}, {"$set": {"auto_end": status}}, upsert=True
-        )
-        # Update cache
-        cached = self.bot_cache.get(bot_id, {})
-        cached["auto_end"] = status
-        self.bot_cache[bot_id] = cached
+        """Set auto-end status with cache update."""
+        try:
+            await self._execute_with_retry(
+                self.bot_db.update_one,
+                {"_id": bot_id}, 
+                {"$set": {"auto_end": status}}, 
+                upsert=True
+            )
+            
+            # Update cache
+            cache_data = {"auto_end": status}
+            self.bot_cache[bot_id] = cache_data
+            self.bot_cache_l1[bot_id] = cache_data
+            
+        except Exception as e:
+            LOGGER.error("Error setting auto_end status for %s: %s", bot_id, e)
+
+    async def get_database_stats(self) -> Dict[str, Any]:
+        """Get comprehensive database statistics."""
+        try:
+            stats = {
+                "connection_healthy": self._connection_healthy,
+                "last_health_check": self._last_health_check,
+                **self.metrics.get_stats(),
+                "cache_sizes": {
+                    "chat_l1": len(self.chat_cache_l1),
+                    "chat_l2": len(self.chat_cache),
+                    "bot_l1": len(self.bot_cache_l1),
+                    "bot_l2": len(self.bot_cache),
+                    "user": len(self.user_cache),
+                },
+                "collections": {
+                    "chats": await self.chat_db.estimated_document_count(),
+                    "users": await self.users_db.estimated_document_count(),
+                    "bots": await self.bot_db.estimated_document_count(),
+                }
+            }
+            return stats
+            
+        except Exception as e:
+            LOGGER.error("Error getting database stats: %s", e)
+            return {"error": str(e)}
+
+    async def optimize_database(self) -> None:
+        """Perform database optimization tasks."""
+        try:
+            # Create indexes for better performance
+            await self._execute_with_retry(
+                self.chat_db.create_index, [("assistant", 1)]
+            )
+            await self._execute_with_retry(
+                self.chat_db.create_index, [("auth_users", 1)]
+            )
+            await self._execute_with_retry(
+                self.users_db.create_index, [("created_at", 1)]
+            )
+            
+            LOGGER.info("Database optimization completed")
+            
+        except Exception as e:
+            LOGGER.error("Error optimizing database: %s", e)
 
     async def close(self) -> None:
-        await self.mongo_client.close()
-        LOGGER.info("Database connection closed.")
+        """Close database connection with cleanup."""
+        try:
+            # Cancel monitoring task
+            if self._connection_monitor_task:
+                self._connection_monitor_task.cancel()
+                try:
+                    await self._connection_monitor_task
+                except asyncio.CancelledError:
+                    pass
+            
+            # Clear caches
+            self.chat_cache.clear()
+            self.chat_cache_l1.clear()
+            self.bot_cache.clear()
+            self.bot_cache_l1.clear()
+            self.user_cache.clear()
+            
+            # Close connection
+            await self.mongo_client.close()
+            
+            LOGGER.info("Database connection closed successfully.")
+            LOGGER.info("Final stats: %s", self.metrics.get_stats())
+            
+        except Exception as e:
+            LOGGER.error("Error closing database: %s", e)
 
 
 db: Database = Database()
