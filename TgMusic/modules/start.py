@@ -63,7 +63,7 @@ async def callback_query_help(c: Client, message: types.UpdateNewCallbackQuery) 
     data = message.payload.data.decode()
 
     if data == "help_all":
-        user = await c.getUser(message.sender_id)
+        user = await c.getUser(message.sender_user_id)
         await message.answer("📚 Opening Help Menu...")
         welcome_text = (
             f"👋 <b>Hello {user.first_name}!</b>\n\n"
@@ -82,7 +82,7 @@ async def callback_query_help(c: Client, message: types.UpdateNewCallbackQuery) 
 
     if data == "help_back":
         await message.answer("HOME ..")
-        user = await c.getUser(message.sender_id)
+        user = await c.getUser(message.sender_user_id)
         await message.edit_message_caption(
             caption=startText.format(user.first_name, c.me.first_name),
             reply_markup=add_me_markup(c.me.usernames.editable_username),
