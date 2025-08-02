@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.10"
 
 [[package]]
@@ -1261,6 +1261,7 @@ source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
     { name = "cachetools" },
+    { name = "httpx" },
     { name = "kurigram" },
     { name = "meval" },
     { name = "ntgcalls" },
@@ -1291,6 +1292,7 @@ requires-dist = [
     { name = "aiofiles", specifier = "~=24.1.0" },
     { name = "black", marker = "extra == 'dev'" },
     { name = "cachetools", specifier = "~=6.1.0" },
+    { name = "httpx", specifier = "~=0.28.1" },
     { name = "kurigram", specifier = "~=2.2.7" },
     { name = "meval", specifier = "~=2.5" },
     { name = "ntgcalls", specifier = "~=2.0.5" },

@@ -19,7 +19,12 @@ from sys import version as pyver
 from typing import Any, Optional, Tuple, Union
 
 import psutil
-from meval import meval
+try:
+    from meval import meval
+except ImportError:
+    # Fallback if meval is not available
+    def meval(code, globals_dict, **kwargs):
+        return eval(code, globals_dict, kwargs)
 from ntgcalls import __version__ as ntgver
 from pyrogram import __version__ as pyrover
 from pytdbot import Client, types
@@ -123,7 +128,7 @@ async def exec_eval(c: Client, m: types.Message) -> None:
             # Return formatted stripped traceback
             stripped_tb = tb[first_snip_idx:]
             formatted_tb = format_exception(e, tb=stripped_tb)
-            user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+            user_lang = await language_manager.get_language(m.from_id, m.chat_id)
             return language_manager.get_text("func_error", user_lang, message="Error:\n\n"), formatted_tb
 
     prefix, result = await _eval()
