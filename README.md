@@ -440,7 +440,7 @@ API_KEY=your-secret-key
 **TgMusicBotFork** is licensed under the [GNU Affero General Public License v3 or later](https://www.gnu.org/licenses/agpl-3.0.html).
 
 Original work by [AshokShau](https://github.com/AshokShau)  
-Forked and maintained by [depinrise](https://github.com/depinrise)
+Forked and maintained by [Devin](https://github.com/depinrise)
 
 ## 💖 Support
 
@@ -456,3 +456,6 @@ Help keep this project alive!
 [![Channel](https://img.shields.io/badge/Updates-Channel-blue?logo=telegram)](https://t.me/FallenProjects)
 
 ---
+<p align="center">
+Maintained with 💜 by <a href="https://github.com/depinrise" target="_blank">Devin</a> 🐿️
+</p>
