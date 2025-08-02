@@ -71,6 +71,125 @@
 
 ---
 
+## 🏗️ Architecture
+
+```mermaid
+graph TB
+    %% User Layer
+    User[👤 Telegram User]
+    Group[👥 Telegram Group]
+    
+    %% Main Bot Layer
+    Bot[🤖 TgMusic Bot]
+    PyTdBot[📱 PyTdBot Client]
+    PyTgCalls[🎵 PyTgCalls]
+    
+    %% Service Layer
+    Downloader[⬇️ Download Service]
+    Player[🎮 Player Service]
+    Jobs[⏰ Job Scheduler]
+    
+    %% Cache & Memory
+    ChatCache[💾 Chat Cache]
+    UserCache[👤 User Cache]
+    BotCache[🤖 Bot Cache]
+    
+    %% Database Layer
+    MongoDB[(🟢 MongoDB<br/>Persistent Storage)]
+    
+    %% External APIs
+    YouTube[📺 YouTube API]
+    Spotify[🎧 Spotify API]
+    JioSaavn[🎵 JioSaavn API]
+    AppleMusic[🍎 Apple Music API]
+    SoundCloud[☁️ SoundCloud API]
+    
+    %% Auto-Leave System
+    ActivityTracker[📊 Activity Tracker]
+    AutoLeave[🚪 Auto-Leave System]
+    
+    %% Configuration
+    Config[⚙️ Environment Config]
+    
+    %% Main Flow
+    User -.->|Commands| Bot
+    Group -.->|Messages| Bot
+    Bot -->|Voice Chat| PyTgCalls
+    Bot -->|Client Management| PyTdBot
+    
+    %% Service Flow
+    Bot -->|Download Requests| Downloader
+    Bot -->|Playback Control| Player
+    Bot -->|Scheduled Tasks| Jobs
+    
+    %% Cache Flow
+    Bot -->|Store Data| ChatCache
+    Bot -->|Store Data| UserCache
+    Bot -->|Store Data| BotCache
+    
+    %% Database Flow
+    Bot -->|Persist Data| MongoDB
+    ChatCache -->|Sync| MongoDB
+    UserCache -->|Sync| MongoDB
+    
+    %% Download Flow
+    Downloader -->|Video/Audio| YouTube
+    Downloader -->|Music| Spotify
+    Downloader -->|Music| JioSaavn
+    Downloader -->|Music| AppleMusic
+    Downloader -->|Music| SoundCloud
+    
+    %% Auto-Leave Flow
+    Bot -->|Track Activity| ActivityTracker
+    ActivityTracker -->|Inactive Chats| AutoLeave
+    AutoLeave -->|Leave Groups| Bot
+    
+    %% Configuration Flow
+    Config -->|Settings| Bot
+    Config -->|API Keys| Downloader
+    Config -->|DB Config| MongoDB
+    Config -->|Auto-Leave| AutoLeave
+    
+    %% Styling
+    classDef userStyle fill:#E3F2FD,stroke:#1976D2,stroke-width:3px,color:#000
+    classDef botStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:3px,color:#000
+    classDef serviceStyle fill:#FFF8E1,stroke:#F57C00,stroke-width:3px,color:#000
+    classDef cacheStyle fill:#E8F5E8,stroke:#388E3C,stroke-width:3px,color:#000
+    classDef databaseStyle fill:#FCE4EC,stroke:#C2185B,stroke-width:3px,color:#000
+    classDef apiStyle fill:#FFF3E0,stroke:#FF9800,stroke-width:3px,color:#000
+    classDef configStyle fill:#E0F2F1,stroke:#00695C,stroke-width:3px,color:#000
+    
+    class User,Group userStyle
+    class Bot,PyTdBot,PyTgCalls botStyle
+    class Downloader,Player,Jobs,ActivityTracker,AutoLeave serviceStyle
+    class ChatCache,UserCache,BotCache cacheStyle
+    class MongoDB databaseStyle
+    class YouTube,Spotify,JioSaavn,AppleMusic,SoundCloud apiStyle
+    class Config configStyle
+```
+
+## Auto-Leave Feature
+
+The bot includes an intelligent auto-leave system that:
+
+- **1-Week Timer**: Automatically leaves groups that have been inactive for 1 week
+- **Activity Detection**: Stays in groups that have recent activity
+- **Smart Monitoring**: Checks for activity every 6 hours
+- **Activity Tracking**: Records activity when users interact with the bot
+
+### Activity Tracking
+
+The bot tracks activity in the following scenarios:
+- Any message sent in the group
+- Bot commands used (`/play`, `/skip`, `/pause`, etc.)
+- Callback button interactions
+- Bot configuration changes
+
+### Commands
+
+- `/activity` - Show chat activity statistics (developers only)
+- `/test_autoleave` - Test auto-leave functionality (developers only)
+
 ## 🚀 Quick Deploy
 
 [![Deploy on Heroku](https://img.shields.io/badge/Deploy%20on%20Heroku-430098?style=for-the-badge&logo=heroku)](https://heroku.com/deploy?template=https://github.com/depinrise/TgMusicBotFork)
