@@ -757,7 +757,7 @@ class Calls:
         if isinstance(client, types.Error):
             return client
 
-        invite_link = chat_invite_cache.get(chat_id)
+        invite_link = await chat_invite_cache.get(chat_id)
         if not invite_link:
             get_link = await self.bot.createChatInviteLink(chat_id, name="TgMusicBot")
             if isinstance(get_link, types.Error):

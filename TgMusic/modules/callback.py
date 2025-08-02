@@ -17,6 +17,12 @@ from ..core import DownloaderWrapper
 async def callback_query(c: Client, message: types.UpdateNewCallbackQuery) -> None:
     """Handle all playback control callback queries (skip, stop, pause, resume)."""
     data = message.payload.data.decode()
+    chat_id = message.chat_id
+    
+    # Track activity for group chats
+    if chat_id < 0:
+        await db.update_chat_activity(chat_id)
+        chat_cache.update_activity(chat_id)
     
     # Retrieve message and user info with error handling
     get_msg = await message.getMessage()
@@ -88,7 +94,6 @@ async def callback_query(c: Client, message: types.UpdateNewCallbackQuery) -> No
         )
         return None
 
-    chat_id = message.chat_id
     if requires_active_chat(data) and not chat_cache.is_active(chat_id):
         user_lang = await language_manager.get_language(user_id, message.chat_id)
         return await send_response(

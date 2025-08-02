@@ -373,6 +373,10 @@ async def handle_play_command(c: Client, msg: types.Message, is_video: bool = Fa
     if chat_id > 0:
         return await msg.reply_text(language_manager.get_text("playback_groups_only", user_lang))
 
+    # Track activity for this chat
+    await db.update_chat_activity(chat_id)
+    chat_cache.update_activity(chat_id)
+
     # Check queue limit
     queue = chat_cache.get_queue(chat_id)
     if len(queue) > 10:

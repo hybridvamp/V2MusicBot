@@ -230,6 +230,10 @@ async def new_message(client: Client, update: types.UpdateNewMessage) -> None:
     # Run DB operation in the background
     if chat_id < 0:
         client.loop.create_task(db.add_chat(chat_id))
+        # Update activity for group chats
+        client.loop.create_task(db.update_chat_activity(chat_id))
+        # Update cache activity
+        chat_cache.update_activity(chat_id)
     else:
         client.loop.create_task(db.add_user(chat_id))
 

@@ -22,6 +22,10 @@ async def set_play_type(_: Client, msg: types.Message) -> None:
         await msg.reply_text("⛔ Administrator privileges required")
         return
 
+    # Track activity for group chats
+    await db.update_chat_activity(chat_id)
+    chat_cache.update_activity(chat_id)
+
     play_type = extract_argument(msg.text, enforce_digit=True)
     if not play_type:
         text = "Usage: /setPlayType 0/1\n\n0 = Directly play the first search result.\n1 = Show a list of songs to choose from."
@@ -65,6 +69,11 @@ async def handle_playback_action(
 
     if isinstance(_chat_id, types.Message):
         return
+
+    # Track activity for group chats
+    if _chat_id < 0:
+        await db.update_chat_activity(_chat_id)
+        chat_cache.update_activity(_chat_id)
 
     result = await action(_chat_id)
     if isinstance(result, types.Error):

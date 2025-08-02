@@ -11,6 +11,8 @@ from TgMusic.core import (
     Filter,
     SupportButton,
     language_manager,
+    db,
+    chat_cache,
 )
 from TgMusic.core.buttons import add_me_markup, HelpMenu, BackHelpMenu
 
@@ -33,10 +35,14 @@ async def start_cmd(c: Client, message: types.Message):
     mention = await message.mention()
 
     if chat_id < 0:  # Group
+        # Track activity for group chats
+        await db.update_chat_activity(chat_id)
+        chat_cache.update_activity(chat_id)
+        
         welcome_text = (
             f"🎵 <b>Hello {mention}!</b>\n\n"
             f"<b>{bot_name}</b> is now active in this group.\n"
-            "Here’s what I can do:\n"
+            "Here's what I can do:\n"
             "• High-quality music streaming\n"
             "• Supports YouTube, Spotify, and more\n"
             "• Powerful controls for seamless playback\n\n"

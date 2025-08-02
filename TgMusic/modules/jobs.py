@@ -260,37 +260,52 @@ class OptimizedInactiveCallManager:
         self.metrics.total_runtime = time.time() - loop_start_time
 
     async def _leave_loop(self):
-        """Optimized auto-leave loop with precise scheduling."""
+        """Auto-leave loop with 1-week inactivity timer and activity detection."""
         while not self._stop.is_set():
             try:
-                now = datetime.now()
-                target = now.replace(hour=3, minute=0, second=0, microsecond=0)
-                if now >= target:
-                    target += timedelta(days=1)
-
-                wait_time = (target - now).total_seconds()
-                LOGGER.info("AutoLeave scheduled for %s (waiting %.2f hours)", 
-                          target.strftime("%Y-%m-%d %H:%M:%S"), wait_time / 3600)
-
-                # Use asyncio.wait_for for better cancellation handling
-                try:
-                    await asyncio.wait_for(self._stop.wait(), timeout=wait_time)
-                    break  # Stop event was set
-                except asyncio.TimeoutError:
-                    pass  # Timeout reached, proceed with leave_all
-
+                # Check for inactive chats every 6 hours
+                await asyncio.sleep(6 * 3600)  # 6 hours
+                
                 if self._stop.is_set():
                     break
 
-                # Execute leave_all operation
-                await self.leave_all()
+                # Get inactive chats (inactive for 1 week)
+                inactive_chats = await db.get_inactive_chats(max_inactive_days=7)
+                
+                if not inactive_chats:
+                    LOGGER.info("No chats inactive for 1 week found")
+                    continue
 
-                # Wait for next day or until stopped
-                try:
-                    await asyncio.wait_for(self._stop.wait(), timeout=86400)  # 24 hours
-                    break
-                except asyncio.TimeoutError:
-                    continue  # Continue to next iteration
+                LOGGER.info("Found %d chats inactive for 1 week, checking for activity...", len(inactive_chats))
+                
+                # Check each inactive chat for recent activity
+                chats_to_leave = []
+                for chat_id in inactive_chats:
+                    # Check if chat is currently active in cache
+                    if chat_cache.is_active(chat_id):
+                        LOGGER.debug("Chat %s is currently active, skipping leave", chat_id)
+                        continue
+                    
+                    # Check if there's any recent activity in cache
+                    chat_data = chat_cache.chat_cache.get(chat_id, {})
+                    last_activity = chat_data.get("last_activity", 0)
+                    current_time = time.time()
+                    
+                    # If last activity was within 1 week, don't leave
+                    if current_time - last_activity < (7 * 24 * 3600):
+                        LOGGER.debug("Chat %s has recent activity, skipping leave", chat_id)
+                        continue
+                    
+                    chats_to_leave.append(chat_id)
+
+                if not chats_to_leave:
+                    LOGGER.info("No chats to leave after activity check")
+                    continue
+
+                LOGGER.info("Leaving %d inactive chats after 1 week of inactivity", len(chats_to_leave))
+                
+                # Execute leave operation for inactive chats
+                await self._leave_inactive_chats(chats_to_leave)
 
             except Exception as e:
                 LOGGER.exception("AutoLeave loop error: %s", e)
@@ -302,6 +317,120 @@ class OptimizedInactiveCallManager:
                     break
                 except asyncio.TimeoutError:
                     continue
+
+    async def _leave_inactive_chats(self, chat_ids: List[int]) -> int:
+        """Leave specific inactive chats with enhanced error handling."""
+        if not config.AUTO_LEAVE:
+            LOGGER.info("AutoLeave is disabled, skipping leave operation")
+            return 0
+
+        start_time = time.time()
+        LOGGER.info("Starting leave operation for %d inactive chats", len(chat_ids))
+
+        try:
+            total_left = 0
+            processed_clients = 0
+            
+            # Get all available clients
+            available_clients = list(call.calls.items())
+            if not available_clients:
+                LOGGER.warning("No clients available for leave operation")
+                return 0
+            
+            LOGGER.info("Processing %d clients for leave operation", len(available_clients))
+            
+            # Process clients concurrently (but with limited concurrency)
+            semaphore = asyncio.Semaphore(3)  # Max 3 clients processed simultaneously
+            
+            async def process_client_with_semaphore(client_data):
+                client_name, call_instance = client_data
+                async with semaphore:
+                    try:
+                        ub: PyroClient = call_instance.mtproto_client
+                        if not ub:
+                            LOGGER.warning("Client %s has no mtproto_client", client_name)
+                            return 0
+                        
+                        return await self._process_inactive_chats_for_client(client_name, ub, chat_ids)
+                    except Exception as e:
+                        LOGGER.exception("Error processing client %s: %s", client_name, e)
+                        self.metrics.record_error()
+                        return 0
+            
+            # Execute all client operations
+            tasks = [
+                asyncio.create_task(process_client_with_semaphore(client_data))
+                for client_data in available_clients
+            ]
+            
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Process results
+            for i, result in enumerate(results):
+                client_name = available_clients[i][0]
+                if isinstance(result, Exception):
+                    LOGGER.error("Client %s processing failed: %s", client_name, result)
+                    self.metrics.record_error()
+                else:
+                    total_left += result
+                    processed_clients += 1
+            
+            # Log final statistics
+            duration = time.time() - start_time
+            LOGGER.info(
+                "Leave operation completed: %d clients processed, %d total chats left, %.2fs duration",
+                processed_clients, total_left, duration
+            )
+            
+            return total_left
+            
+        except Exception as e:
+            LOGGER.critical("Fatal error in leave operation: %s", e, exc_info=True)
+            self.metrics.record_error()
+            return 0
+            
+        finally:
+            duration = time.time() - start_time
+            LOGGER.info("Leave operation completed in %.2fs", duration)
+
+    async def _process_inactive_chats_for_client(self, client_name: str, ub: PyroClient, chat_ids: List[int]) -> int:
+        """Process inactive chats for a single client and leave them."""
+        try:
+            successful_leaves = 0
+            
+            # Process chats in batches with rate limiting
+            batch_size = 5  # Smaller batches to avoid rate limits
+            
+            for i in range(0, len(chat_ids), batch_size):
+                batch = chat_ids[i:i + batch_size]
+                
+                # Process batch concurrently
+                tasks = [
+                    asyncio.create_task(self._leave_chat(ub, chat_id))
+                    for chat_id in batch
+                ]
+                
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                
+                # Count successful operations
+                for result in results:
+                    if result is True:
+                        successful_leaves += 1
+                    elif isinstance(result, Exception):
+                        LOGGER.error("Leave operation failed: %s", result)
+                
+                # Rate limiting between batches
+                if i + batch_size < len(chat_ids):
+                    await asyncio.sleep(2.0)
+            
+            LOGGER.info("Client %s: Successfully left %d/%d inactive chats", 
+                       client_name, successful_leaves, len(chat_ids))
+            return successful_leaves
+            
+        except Exception as e:
+            LOGGER.exception("Error processing inactive chats for client %s: %s", client_name, e)
+            self.metrics.record_error()
+            return 0
 
     async def _leave_chat(self, ub: PyroClient, chat_id: int, retry_count: int = 0) -> bool:
         """Leave a chat with enhanced error handling and retry logic."""

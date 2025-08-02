@@ -771,5 +771,95 @@ class Database:
         except Exception as e:
             LOGGER.error("Error setting chat language for %s: %s", chat_id, e)
 
+    async def update_chat_activity(self, chat_id: int) -> None:
+        """Update chat's last activity timestamp."""
+        try:
+            current_time = time.time()
+            await self._execute_with_retry(
+                self.chat_db.update_one,
+                {"_id": chat_id},
+                {"$set": {"last_activity": current_time}},
+                upsert=True
+            )
+            
+            # Update cache
+            if chat_id in self.chat_cache:
+                self.chat_cache[chat_id]["last_activity"] = current_time
+                
+        except Exception as e:
+            LOGGER.error("Error updating chat activity for %s: %s", chat_id, e)
+
+    async def get_chat_last_activity(self, chat_id: int) -> Optional[float]:
+        """Get chat's last activity timestamp."""
+        try:
+            chat_data = await self._execute_with_retry(
+                self.chat_db.find_one,
+                {"_id": chat_id},
+                {"last_activity": 1}
+            )
+            return chat_data.get("last_activity") if chat_data else None
+        except Exception as e:
+            LOGGER.error("Error getting chat last activity for %s: %s", chat_id, e)
+            return None
+
+    async def get_inactive_chats(self, max_inactive_days: int = 7) -> List[int]:
+        """Get list of chats that have been inactive for more than specified days."""
+        try:
+            cutoff_time = time.time() - (max_inactive_days * 24 * 3600)  # Convert days to seconds
+            
+            cursor = self.chat_db.find(
+                {"last_activity": {"$lt": cutoff_time}},
+                {"_id": 1}
+            )
+            
+            inactive_chats = []
+            async for doc in cursor:
+                inactive_chats.append(doc["_id"])
+            
+            return inactive_chats
+            
+        except Exception as e:
+            LOGGER.error("Error getting inactive chats: %s", e)
+            return []
+
+    async def get_chat_activity_stats(self) -> Dict[str, Any]:
+        """Get chat activity statistics."""
+        try:
+            current_time = time.time()
+            one_week_ago = current_time - (7 * 24 * 3600)
+            one_day_ago = current_time - (24 * 3600)
+            
+            # Count chats active in different time periods
+            total_chats = await self._execute_with_retry(
+                self.chat_db.count_documents, {}
+            )
+            
+            active_last_week = await self._execute_with_retry(
+                self.chat_db.count_documents,
+                {"last_activity": {"$gte": one_week_ago}}
+            )
+            
+            active_last_day = await self._execute_with_retry(
+                self.chat_db.count_documents,
+                {"last_activity": {"$gte": one_day_ago}}
+            )
+            
+            inactive_chats = await self._execute_with_retry(
+                self.chat_db.count_documents,
+                {"last_activity": {"$lt": one_week_ago}}
+            )
+            
+            return {
+                "total_chats": total_chats,
+                "active_last_week": active_last_week,
+                "active_last_day": active_last_day,
+                "inactive_over_week": inactive_chats,
+                "current_time": current_time
+            }
+            
+        except Exception as e:
+            LOGGER.error("Error getting chat activity stats: %s", e)
+            return {"error": str(e)}
+
 
 db: Database = Database()

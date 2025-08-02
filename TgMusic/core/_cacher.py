@@ -369,10 +369,26 @@ class OptimizedChatCacher:
                 chat_id, {"is_active": active, "queue": deque()}
             )
             data["is_active"] = active
+            # Update last activity timestamp
+            data["last_activity"] = time.time()
             self.metrics.record_set()
             return True
         except Exception as e:
             LOGGER.error("Error setting active status for chat %s: %s", chat_id, e)
+            self.metrics.record_error()
+            return False
+
+    def update_activity(self, chat_id: int) -> bool:
+        """Update chat's last activity timestamp."""
+        try:
+            data = self.chat_cache.setdefault(
+                chat_id, {"is_active": False, "queue": deque()}
+            )
+            data["last_activity"] = time.time()
+            self.metrics.record_set()
+            return True
+        except Exception as e:
+            LOGGER.error("Error updating activity for chat %s: %s", chat_id, e)
             self.metrics.record_error()
             return False
 

@@ -10,6 +10,7 @@ import platform
 import re
 import socket
 import sys
+import time
 import traceback
 import uuid
 from datetime import datetime, timedelta
@@ -441,3 +442,79 @@ async def logs(c: Client, message: types.Message) -> None:
     )
     if isinstance(reply, types.Error):
         c.logger.warning(reply.message)
+
+
+@Client.on_message(filters=Filter.command("activity"))
+async def activity_stats(c: Client, msg: types.Message) -> None:
+    """Show chat activity statistics."""
+    if msg.from_id not in config.DEVS:
+        return
+
+    try:
+        stats = await db.get_chat_activity_stats()
+        if "error" in stats:
+            await msg.reply_text(f"❌ Error getting activity stats: {stats['error']}")
+            return
+
+        current_time = stats.get("current_time", time.time())
+        one_week_ago = current_time - (7 * 24 * 3600)
+        
+        text = f"📊 <b>Chat Activity Statistics</b>\n\n"
+        text += f"📈 <b>Total Chats:</b> {stats['total_chats']}\n"
+        text += f"✅ <b>Active Last Week:</b> {stats['active_last_week']}\n"
+        text += f"🟢 <b>Active Last Day:</b> {stats['active_last_day']}\n"
+        text += f"🔴 <b>Inactive Over 1 Week:</b> {stats['inactive_over_week']}\n\n"
+        text += f"⏰ <b>Last Check:</b> {datetime.fromtimestamp(current_time).strftime('%Y-%m-%d %H:%M:%S')}\n"
+        text += f"📅 <b>1 Week Ago:</b> {datetime.fromtimestamp(one_week_ago).strftime('%Y-%m-%d %H:%M:%S')}"
+
+        await msg.reply_text(text)
+
+    except Exception as e:
+        await msg.reply_text(f"❌ Error: {str(e)}")
+
+
+@Client.on_message(filters=Filter.command("test_autoleave"))
+async def test_autoleave(c: Client, msg: types.Message) -> None:
+    """Test the auto-leave functionality manually."""
+    if msg.from_id not in config.DEVS:
+        return
+
+    try:
+        # Get inactive chats
+        inactive_chats = await db.get_inactive_chats(max_inactive_days=7)
+        
+        if not inactive_chats:
+            await msg.reply_text("✅ No chats inactive for 1 week found")
+            return
+
+        # Check which chats would be left
+        chats_to_leave = []
+        for chat_id in inactive_chats:
+            if chat_cache.is_active(chat_id):
+                continue
+            
+            chat_data = chat_cache.chat_cache.get(chat_id, {})
+            last_activity = chat_data.get("last_activity", 0)
+            current_time = time.time()
+            
+            if current_time - last_activity >= (7 * 24 * 3600):
+                chats_to_leave.append(chat_id)
+
+        if not chats_to_leave:
+            await msg.reply_text("✅ No chats would be left after activity check")
+            return
+
+        text = f"🔍 <b>Auto-Leave Test Results</b>\n\n"
+        text += f"📊 <b>Total Inactive Chats:</b> {len(inactive_chats)}\n"
+        text += f"🚪 <b>Chats to Leave:</b> {len(chats_to_leave)}\n\n"
+        text += f"📋 <b>Chat IDs to Leave:</b>\n"
+        for chat_id in chats_to_leave[:10]:  # Show first 10
+            text += f"• {chat_id}\n"
+        
+        if len(chats_to_leave) > 10:
+            text += f"... and {len(chats_to_leave) - 10} more\n"
+
+        await msg.reply_text(text)
+
+    except Exception as e:
+        await msg.reply_text(f"❌ Error: {str(e)}")
