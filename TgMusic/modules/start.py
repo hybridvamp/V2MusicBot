@@ -64,18 +64,18 @@ async def start_cmd(c: Client, message: types.Message):
 async def callback_query_help(c: Client, message: types.UpdateNewCallbackQuery) -> None:
     data = message.payload.data.decode()
 
+    # Get user ID from the message (needed for all cases)
+    get_msg = await message.getMessage()
+    if isinstance(get_msg, types.Error):
+        c.logger.warning(f"Failed to get message: {get_msg.message}")
+        return None
+    if isinstance(get_msg.sender_id, types.MessageSenderUser):
+        user_id = get_msg.sender_id.user_id
+    else:
+        c.logger.warning("Invalid sender type for callback query")
+        return None
+
     if data == "help_all":
-        # Get user ID from the message
-        get_msg = await message.getMessage()
-        if isinstance(get_msg, types.Error):
-            c.logger.warning(f"Failed to get message: {get_msg.message}")
-            return None
-        if isinstance(get_msg.sender_id, types.MessageSenderUser):
-            user_id = get_msg.sender_id.user_id
-        else:
-            c.logger.warning("Invalid sender type for callback query")
-            return None
-        
         user = await c.getUser(user_id)
         chat_id = message.chat_id
         user_lang = await language_manager.get_language(user_id, chat_id)
@@ -90,21 +90,15 @@ async def callback_query_help(c: Client, message: types.UpdateNewCallbackQuery) 
         )
         edit = await message.edit_message_caption(welcome_text, reply_markup=HelpMenu)
         if isinstance(edit, types.Error):
-            c.logger.error(f"Failed to edit message: {edit}")
+            if edit.message == "MESSAGE_NOT_MODIFIED":
+                # This is not a real error - the message content is the same
+                c.logger.debug("Message not modified (content unchanged)")
+            else:
+                c.logger.error(f"Failed to edit message: {edit}")
         return
 
     if data == "help_back":
         await message.answer("HOME ..")
-        # Get user ID from the message
-        get_msg = await message.getMessage()
-        if isinstance(get_msg, types.Error):
-            c.logger.warning(f"Failed to get message: {get_msg.message}")
-            return None
-        if isinstance(get_msg.sender_id, types.MessageSenderUser):
-            user_id = get_msg.sender_id.user_id
-        else:
-            c.logger.warning("Invalid sender type for callback query")
-            return None
         user = await c.getUser(user_id)
         await message.edit_message_caption(
             caption=startText.format(user.first_name, c.me.first_name),
@@ -148,7 +142,11 @@ async def callback_query_help(c: Client, message: types.UpdateNewCallbackQuery) 
         )
         edit = await message.edit_message_caption(formatted_text, reply_markup=category["markup"])
         if isinstance(edit, types.Error):
-            c.logger.error(f"Failed to edit message: {edit}")
+            if edit.message == "MESSAGE_NOT_MODIFIED":
+                # This is not a real error - the message content is the same
+                c.logger.debug("Message not modified (content unchanged)")
+            else:
+                c.logger.error(f"Failed to edit message: {edit}")
         return
 
     await message.answer("⚠️ Unknown command category.")

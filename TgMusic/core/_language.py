@@ -41,7 +41,7 @@ class LanguageManager:
             
             # Language System
             "language_title": "🌐 Language Settings",
-            "language_current": "Current Language: <b>{language}</b>",
+            "language_current": "Current Language: <b>{lang_name}</b>",
             "language_select": "Select your preferred language:",
             "language_changed": "✅ Language changed to <b>{language}</b>",
             "language_error": "❌ Error changing language",
@@ -283,7 +283,7 @@ class LanguageManager:
             
             # Language System
             "language_title": "🌐 Pengaturan Bahasa",
-            "language_current": "Bahasa Saat Ini: <b>{language}</b>",
+            "language_current": "Bahasa Saat Ini: <b>{lang_name}</b>",
             "language_select": "Pilih bahasa yang Anda inginkan:",
             "language_changed": "✅ Bahasa diubah ke <b>{language}</b>",
             "language_error": "❌ Error mengubah bahasa",
