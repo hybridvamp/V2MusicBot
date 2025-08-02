@@ -436,10 +436,11 @@ API_KEY=your-secret-key
 
 ## 📜 License
 
-AGPL-3.0 © [AshokShau](https://github.com/AshokShau).  
-[![License](https://img.shields.io/github/license/depinrise/TgMusicBotFork?color=blue)](LICENSE)
+![AGPL v3](https://www.gnu.org/graphics/agplv3-155x51.png)  
+**TgMusicBotFork** is licensed under the [GNU Affero General Public License v3 or later](https://www.gnu.org/licenses/agpl-3.0.html).
 
----
+Original work by [AshokShau](https://github.com/AshokShau)  
+Forked and maintained by [depinrise](https://github.com/depinrise)
 
 ## 💖 Support
 
