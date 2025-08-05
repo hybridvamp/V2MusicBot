@@ -7,7 +7,7 @@ from pytdbot import Client, types
 
 from TgMusic.core import Filter, language_manager, chat_cache
 from TgMusic.core.admins import is_admin
-from .utils.play_helpers import extract_argument
+from .utils.play_helpers import extract_argument, reply_auto_delete_message
 
 
 @Client.on_message(filters=Filter.command("remove"))
@@ -20,17 +20,19 @@ async def remove_song(c: Client, msg: types.Message) -> None:
     args = extract_argument(msg.text, enforce_digit=True)
 
     if not await is_admin(chat_id, msg.from_id):
-        await msg.reply_text("⛔ Administrator privileges required.")
+        await reply_auto_delete_message(c, msg, "⛔ Administrator privileges required.", delay=10)
         return None
 
     if not chat_cache.is_active(chat_id):
-        await msg.reply_text("⏸ No active playback session.")
+        await reply_auto_delete_message(c, msg, "⏸ No active playback session.", delay=10)
         return None
 
     if not args:
-        await msg.reply_text(
+        await reply_auto_delete_message(
+            c, msg,
             "ℹ️ <b>Usage:</b> <code>/remove [track_number]</code>\n"
-            "Example: <code>/remove 3</code>"
+            "Example: <code>/remove 3</code>",
+            delay=10
         )
         return None
 
@@ -38,26 +40,34 @@ async def remove_song(c: Client, msg: types.Message) -> None:
         track_num = int(args)
     except ValueError:
         user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
-        await msg.reply_text(language_manager.get_text("remove_invalid_number", user_lang))
+        await reply_auto_delete_message(
+            c, msg, 
+            language_manager.get_text("remove_invalid_number", user_lang),
+            delay=10
+        )
         return None
 
     _queue = chat_cache.get_queue(chat_id)
 
     if not _queue:
-        await msg.reply_text("📭 The queue is currently empty.")
+        await reply_auto_delete_message(c, msg, "📭 The queue is currently empty.", delay=10)
         return None
 
     if track_num <= 0 or track_num > len(_queue):
         user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
-        await msg.reply_text(
-            language_manager.get_text("remove_range_error", user_lang, count=len(_queue))
+        await reply_auto_delete_message(
+            c, msg,
+            language_manager.get_text("remove_range_error", user_lang, count=len(_queue)),
+            delay=10
         )
         return None
 
     removed_track = chat_cache.remove_track(chat_id, track_num)
     user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
-    reply = await msg.reply_text(
-        language_manager.get_text("remove_success", user_lang, track=removed_track.name[:45], user=await msg.mention())
+    reply = await reply_auto_delete_message(
+        c, msg,
+        language_manager.get_text("remove_success", user_lang, track=removed_track.name[:45], user=await msg.mention()),
+        delay=10
     )
 
     if isinstance(reply, types.Error):

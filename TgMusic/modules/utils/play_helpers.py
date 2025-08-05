@@ -3,11 +3,14 @@
 #  Part of the TgMusicBot project. All rights reserved where applicable.
 
 import asyncio
-from typing import Any, Union
+from typing import Any, Union, TYPE_CHECKING
 
 from pytdbot import types
 
 from TgMusic.logger import LOGGER
+
+if TYPE_CHECKING:
+    from pytdbot import Client
 
 
 async def get_url(
@@ -115,3 +118,93 @@ async def edit_text(
             return await edit_text(reply_message, *args, **kwargs)
         LOGGER.warning("Error editing message: %s", reply)
     return reply
+
+
+async def auto_delete_message(msg: types.Message, delay: int = 10) -> None:
+    """
+    Automatically deletes a message after a specified delay.
+    
+    Args:
+        msg (types.Message): The message to delete.
+        delay (int): Delay in seconds before deletion (default: 10).
+    """
+    try:
+        await asyncio.sleep(delay)
+        await del_msg(msg)
+    except Exception as e:
+        LOGGER.warning("Error in auto_delete_message: %s", e)
+
+
+async def send_auto_delete_message(
+    client: "Client", 
+    chat_id: int, 
+    text: str, 
+    delay: int = 10,
+    **kwargs
+) -> Union[types.Message, types.Error]:
+    """
+    Sends a message that will be automatically deleted after a specified delay.
+    
+    Args:
+        client: The Telegram client.
+        chat_id (int): The chat ID to send the message to.
+        text (str): The message text.
+        delay (int): Delay in seconds before deletion (default: 10).
+        **kwargs: Additional arguments for sendTextMessage.
+    
+    Returns:
+        Union[types.Message, types.Error]: The sent message or error.
+    """
+    try:
+        msg = await client.sendTextMessage(
+            chat_id=chat_id,
+            text=text,
+            **kwargs
+        )
+        
+        if not isinstance(msg, types.Error):
+            # Start auto-delete task
+            asyncio.create_task(auto_delete_message(msg, delay))
+        
+        return msg
+    except Exception as e:
+        LOGGER.error("Error sending auto-delete message: %s", e)
+        return types.Error(code=500, message=str(e))
+
+
+async def reply_auto_delete_message(
+    client: "Client", 
+    message: types.Message, 
+    text: str, 
+    delay: int = 10,
+    **kwargs
+) -> Union[types.Message, types.Error]:
+    """
+    Replies to a message with auto-delete functionality.
+    
+    Args:
+        client: The Telegram client.
+        message (types.Message): The message to reply to.
+        text (str): The reply text.
+        delay (int): Delay in seconds before deletion (default: 10).
+        **kwargs: Additional arguments for replyTextMessage.
+    
+    Returns:
+        Union[types.Message, types.Error]: The sent message or error.
+    """
+    try:
+        msg = await client.replyTextMessage(
+            chat_id=message.chat_id,
+            message_id=message.id,
+            text=text,
+            **kwargs
+        )
+        
+        if not isinstance(msg, types.Error):
+            # Start auto-delete task
+            asyncio.create_task(auto_delete_message(msg, delay))
+        
+        return msg
+    except Exception as e:
+        LOGGER.error("Error sending auto-delete reply: %s", e)
+        return types.Error(code=500, message=str(e))

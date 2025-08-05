@@ -7,6 +7,7 @@ from pytdbot import Client, types
 
 from TgMusic.core import Filter, call, language_manager
 from .funcs import is_admin_or_reply
+from .utils.play_helpers import reply_auto_delete_message
 
 
 @Client.on_message(filters=Filter.command(["stop", "end"]))
@@ -24,11 +25,17 @@ async def stop_song(c: Client, msg: types.Message) -> None:
     _end = await call.end(chat_id)
     if isinstance(_end, types.Error):
         user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
-        await msg.reply_text(language_manager.get_text("stop_error", user_lang, error=_end.message))
+        await reply_auto_delete_message(
+            c, msg, 
+            language_manager.get_text("stop_error", user_lang, error=_end.message),
+            delay=10
+        )
         return None
 
     user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
-    await msg.reply_text(
-        language_manager.get_text("stop_success", user_lang, user=await msg.mention())
+    await reply_auto_delete_message(
+        c, msg,
+        language_manager.get_text("stop_success", user_lang, user=await msg.mention()),
+        delay=10
     )
     return None

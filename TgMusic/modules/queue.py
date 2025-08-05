@@ -7,6 +7,7 @@ from pytdbot import Client, types
 
 from TgMusic.core import Filter, language_manager, chat_cache, call
 from TgMusic.modules.utils import sec_to_min
+from .utils.play_helpers import reply_auto_delete_message
 
 
 @Client.on_message(filters=Filter.command("queue"))
@@ -19,18 +20,20 @@ async def queue_info(_: Client, msg: types.Message) -> None:
     _queue = chat_cache.get_queue(chat_id)
 
     if not _queue:
-        await msg.reply_text("📭 The queue is currently empty.")
+        await reply_auto_delete_message(_, msg, "📭 The queue is currently empty.", delay=10)
         return
 
     if not chat_cache.is_active(chat_id):
-        await msg.reply_text("⏸ No active playback session.")
+        await reply_auto_delete_message(_, msg, "⏸ No active playback session.", delay=10)
         return
 
     chat = await msg.getChat()
     if isinstance(chat, types.Error):
         user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
-        await msg.reply_text(
-            language_manager.get_text("queue_chat_error", user_lang, error=chat.message)
+        await reply_auto_delete_message(
+            _, msg,
+            language_manager.get_text("queue_chat_error", user_lang, error=chat.message),
+            delay=10
         )
         return
 
@@ -39,8 +42,8 @@ async def queue_info(_: Client, msg: types.Message) -> None:
         f"<b>🎧 Queue for {chat.title}</b>",
         "",
         "╭─────────────⭓",
-        "🎶 <b>Now Playing </b>",
-        f"┣▹ 🎼 Title: `{current_song.name[:45]}`",
+        "🎶 <b>Now Playing</b>",
+        f"┣▹ 🎼 <b>Title:</b> <code>{current_song.name[:45]}</code>",
         "",
         f"┣▹ 🕒 <b>Duration:</b> {sec_to_min(current_song.duration)}",
         f"┣▹ 🔁 <b>Loop:</b> {'On' if current_song.loop else 'Off'}",
@@ -67,8 +70,8 @@ async def queue_info(_: Client, msg: types.Message) -> None:
                 f"<b>🎧 Queue for {chat.title}</b>",
                 "",
                 "╭─────────────⭓",
-                "🎶 <b>Now Playing </b>",
-                f"┣▹ 🎼 Title: `{current_song.name[:45]}`",
+                "🎶 <b>Now Playing</b>",
+                f"┣▹ 🎼 <b>Title:</b> <code>{current_song.name[:45]}</code>",
                 f"┣▹ ⏱ <b>Progress:</b> {sec_to_min(await call.played_time(chat.id))}/{sec_to_min(current_song.duration)}",
                 f"╰▹ 🙋 <b>Requested by:</b> {current_song.user}",
                 "",
@@ -76,4 +79,4 @@ async def queue_info(_: Client, msg: types.Message) -> None:
             ]
         )
 
-    await msg.reply_text(text=formatted_text, disable_web_page_preview=True)
+    await reply_auto_delete_message(_, msg, text=formatted_text, delay=10, disable_web_page_preview=True)

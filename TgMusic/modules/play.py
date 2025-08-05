@@ -180,8 +180,8 @@ async def _handle_single_track(
     bot_name = c.me.first_name
     now_playing = (
         "╭─────────────⭓\n"
-        "🎶 <b>Now Playing </b>\n"
-        f"┣▹ 🎼 Title: `{song.name}`\n\n"
+        "🎶 <b>Now Playing</b>\n"
+        f"┣▹ 🎼 <b>Title:</b> <code>{song.name}</code>\n\n"
         f"┣▹ 🕒 <b>Duration:</b> {sec_to_min(song.duration)}\n"
         f"╰▹ 🙋 <b>Requested by:</b> {song.user}\n\n"
         f"-▸ Sit back, relax, and enjoy the vibe!, powered by {bot_name} 🌟"
@@ -230,7 +230,7 @@ async def _handle_multiple_tracks(
             ),
         )
         queue_items.append(
-            f"┣▹ 🎼 <b>{position}.</b> `{track.name}`\n┣▹ 🕒 Duration: {sec_to_min(track.duration)}"
+            f"┣▹ 🎼 <b>{position}.</b> <code>{track.name}</code>\n┣▹ 🕒 <b>Duration:</b> {sec_to_min(track.duration)}"
         )
 
     queue_summary = (
