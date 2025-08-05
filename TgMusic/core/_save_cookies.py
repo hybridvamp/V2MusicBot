@@ -50,14 +50,17 @@ async def save_bin_content(session: aiohttp.ClientSession, url: str) -> str | No
         .split("#")[0]
     )
     filename += ".txt"
+    
+    # Always save to TgMusic/cookies directory to avoid conflicts
     filepath = os.path.join("TgMusic/cookies", filename)
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
     content = await fetch_content(session, url)
     if content:
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
         try:
             async with aiofiles.open(filepath, "w") as f:
                 await f.write(content)
+            LOGGER.info("Saved cookie file to: %s", filepath)
             return filepath
         except Exception as e:
             LOGGER.error("Error saving file %s: %s", filepath, e)
@@ -74,3 +77,6 @@ async def save_all_cookies(cookie_urls: list[str]) -> list[str]:
         results = await asyncio.gather(*tasks)
 
     return [res for res in results if res]
+
+
+

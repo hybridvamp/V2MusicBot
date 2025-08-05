@@ -72,6 +72,7 @@ class Bot(Client):
     async def _initialize_components(self) -> None:
         from TgMusic.core import save_all_cookies
 
+        # Save cookies from URLs only
         await save_all_cookies(config.COOKIES_URL)
         await self.db.ping()
         await self.start_clients()

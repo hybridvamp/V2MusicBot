@@ -38,12 +38,14 @@ async def queue_info(_: Client, msg: types.Message) -> None:
     text = [
         f"<b>🎧 Queue for {chat.title}</b>",
         "",
-        "<b>▶️ Now Playing:</b>",
-        f"├ <b>Title:</b> <code>{current_song.name[:45]}</code>",
-        f"├ <b>Requested by:</b> {current_song.user}",
-        f"├ <b>Duration:</b> {sec_to_min(current_song.duration)} min",
-        f"├ <b>Loop:</b> {'🔁 On' if current_song.loop else '➡️ Off'}",
-        f"└ <b>Progress:</b> {sec_to_min(await call.played_time(chat.id))} min",
+        "╭─────────────⭓",
+        "🎶 <b>Now Playing </b>",
+        f"┣▹ 🎼 Title: `{current_song.name[:45]}`",
+        "",
+        f"┣▹ 🕒 <b>Duration:</b> {sec_to_min(current_song.duration)}",
+        f"┣▹ 🔁 <b>Loop:</b> {'On' if current_song.loop else 'Off'}",
+        f"┣▹ ⏱ <b>Progress:</b> {sec_to_min(await call.played_time(chat.id))}",
+        f"╰▹ 🙋 <b>Requested by:</b> {current_song.user}",
     ]
 
     if len(_queue) > 1:
@@ -64,9 +66,11 @@ async def queue_info(_: Client, msg: types.Message) -> None:
             [
                 f"<b>🎧 Queue for {chat.title}</b>",
                 "",
-                "<b>▶️ Now Playing:</b>",
-                f"├ <code>{current_song.name[:45]}</code>",
-                f"└ {sec_to_min(await call.played_time(chat.id))}/{sec_to_min(current_song.duration)} min",
+                "╭─────────────⭓",
+                "🎶 <b>Now Playing </b>",
+                f"┣▹ 🎼 Title: `{current_song.name[:45]}`",
+                f"┣▹ ⏱ <b>Progress:</b> {sec_to_min(await call.played_time(chat.id))}/{sec_to_min(current_song.duration)}",
+                f"╰▹ 🙋 <b>Requested by:</b> {current_song.user}",
                 "",
                 f"<b>📊 Total:</b> {len(_queue)} track(s) in queue",
             ]

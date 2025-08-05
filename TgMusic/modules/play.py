@@ -177,11 +177,14 @@ async def _handle_single_track(
     # Prepare now playing message
     thumb = await gen_thumb(song) if await db.get_thumbnail_status(chat_id) else ""
     user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+    bot_name = c.me.first_name
     now_playing = (
-        language_manager.get_text("playback_now_playing", user_lang) +
-        f"▫ <b>Track:</b> <a href='{song.url}'>{song.name}</a>\n"
-        f"▫ <b>Duration:</b> {sec_to_min(song.duration)}\n"
-        f"▫ <b>Requested by:</b> {song.user}"
+        "╭─────────────⭓\n"
+        "🎶 <b>Now Playing </b>\n"
+        f"┣▹ 🎼 Title: `{song.name}`\n\n"
+        f"┣▹ 🕒 <b>Duration:</b> {sec_to_min(song.duration)}\n"
+        f"╰▹ 🙋 <b>Requested by:</b> {song.user}\n\n"
+        f"-▸ Sit back, relax, and enjoy the vibe!, powered by {bot_name} 🌟"
     )
 
     update_result = await _update_msg_with_thumb(
@@ -205,7 +208,7 @@ async def _handle_multiple_tracks(
     is_active = chat_cache.is_active(chat_id)
     queue = chat_cache.get_queue(chat_id)
 
-    queue_header = "<b>📥 Added to Queue:</b>\n<blockquote expandable>\n"
+    queue_header = "╭─────────────⭓\n📥 <b>Added to Queue</b>\n"
     queue_items = []
 
     for index, track in enumerate(tracks):
@@ -227,14 +230,13 @@ async def _handle_multiple_tracks(
             ),
         )
         queue_items.append(
-            f"<b>{position}.</b> {track.name}\n└ Duration: {sec_to_min(track.duration)}"
+            f"┣▹ 🎼 <b>{position}.</b> `{track.name}`\n┣▹ 🕒 Duration: {sec_to_min(track.duration)}"
         )
 
     queue_summary = (
-        f"</blockquote>\n"
-        f"<b>📋 Total in Queue:</b> {len(chat_cache.get_queue(chat_id))}\n"
-        f"<b>⏱ Total Duration:</b> {sec_to_min(sum(t.duration for t in tracks))}\n"
-        f"<b>👤 Requested by:</b> {user_by}"
+        f"╰▹ 📊 <b>Total in Queue:</b> {len(chat_cache.get_queue(chat_id))}\n"
+        f"╰▹ ⏱ <b>Total Duration:</b> {sec_to_min(sum(t.duration for t in tracks))}\n"
+        f"╰▹ 🙋 <b>Requested by:</b> {user_by}"
     )
 
     full_message = queue_header + "\n".join(queue_items) + queue_summary
@@ -262,7 +264,7 @@ async def play_music(
         user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
         return await edit_text(msg, language_manager.get_text("playback_no_tracks", user_lang))
 
-    await edit_text(msg, text="⬇️ Downloading track...")
+    await edit_text(msg, text="🔍")
 
     if len(url_data.tracks) == 1:
         return await _handle_single_track(

@@ -98,6 +98,11 @@ class LanguageManager:
             "playback_stopped": "⏹️ Playback stopped",
             "playback_volume": "🔊 Volume set to: <b>{volume}%</b>",
             
+            # Stop Messages
+            "stop_success": "✅ <b>Successfully stopped music playback!</b>\n\n⏹️ <b>Stopped by:</b> {user}",
+            "stop_error": "❌ <b>Error stopping playback:</b> {error}",
+            "stop_admin_check_error": "⚠️ <b>Admin check error:</b> {error}",
+            
             # Search Messages
             "search_started": "🔍 Searching for: <b>{query}</b>",
             "search_found": "✅ Found: <b>{track_name}</b>",
@@ -339,6 +344,11 @@ class LanguageManager:
             "playback_skipped": "⏭️ Lagu dilewati",
             "playback_stopped": "⏹️ Pemutaran dihentikan",
             "playback_volume": "🔊 Volume diatur ke: <b>{volume}%</b>",
+            
+            # Stop Messages
+            "stop_success": "✅ <b>Berhasil menghentikan pemutaran musik!</b>\n\n⏹️ <b>Dihentikan oleh:</b> {user}",
+            "stop_error": "❌ <b>Error menghentikan pemutaran:</b> {error}",
+            "stop_admin_check_error": "⚠️ <b>Error pemeriksaan admin:</b> {error}",
             
             # Search Messages
             "search_started": "🔍 Mencari: <b>{query}</b>",

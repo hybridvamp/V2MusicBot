@@ -168,7 +168,22 @@ class YouTubeUtils:
 
     @staticmethod
     async def get_cookie_file() -> Optional[str]:
-        """Get a random cookie file from the 'cookies' directory."""
+        """Get cookie file from configured path or fallback to default locations."""
+        from TgMusic.core import config
+        
+        # First check for configured cookies path
+        if config.COOKIES_PATH and os.path.exists(config.COOKIES_PATH):
+            LOGGER.info("Using configured cookie file: %s", config.COOKIES_PATH)
+            return config.COOKIES_PATH
+        
+        # Fallback to local cookies in project root
+        local_cookies = ["cookies.txt", "cookies"]
+        for cookie_file in local_cookies:
+            if os.path.exists(cookie_file):
+                LOGGER.info("Using local cookie file: %s", cookie_file)
+                return cookie_file
+        
+        # Final fallback to TgMusic/cookies directory
         cookie_dir = "TgMusic/cookies"
         try:
             if not os.path.exists(cookie_dir):
@@ -183,7 +198,9 @@ class YouTubeUtils:
                 return None
 
             random_file = random.choice(cookies_files)
-            return os.path.join(cookie_dir, random_file)
+            cookie_path = os.path.join(cookie_dir, random_file)
+            LOGGER.info("Using cookie file from directory: %s", cookie_path)
+            return cookie_path
         except Exception as e:
             LOGGER.warning("Error accessing cookie directory: %s", e)
             return None

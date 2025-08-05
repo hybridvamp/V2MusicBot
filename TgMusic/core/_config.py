@@ -66,6 +66,7 @@ class BotConfig:
         self.COOKIES_URL: list[str] = self._process_cookie_urls(
             os.getenv("COOKIES_URL")
         )
+        self.COOKIES_PATH: Optional[str] = os.getenv("COOKIES_PATH")
 
         # Developer
         devs_env: Optional[str] = os.getenv("DEVS")
