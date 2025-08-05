@@ -60,7 +60,7 @@ class BotConfig:
         self.IGNORE_BACKGROUND_UPDATES: bool = self._get_env_bool(
             "IGNORE_BACKGROUND_UPDATES", True
         )
-        self.AUTO_LEAVE: bool = self._get_env_bool("AUTO_LEAVE", False)
+        self.AUTO_LEAVE: bool = self._get_env_bool("AUTO_LEAVE", True)
 
         # Cookies
         self.COOKIES_URL: list[str] = self._process_cookie_urls(

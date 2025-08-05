@@ -486,10 +486,10 @@ async def test_autoleave(c: Client, msg: types.Message) -> None:
 
     try:
         # Get inactive chats
-        inactive_chats = await db.get_inactive_chats(max_inactive_days=7)
+        inactive_chats = await db.get_inactive_chats(max_inactive_days=1)
         
         if not inactive_chats:
-            await msg.reply_text("✅ No chats inactive for 1 week found")
+            await msg.reply_text("✅ No chats inactive for 1 day found")
             return
 
         # Check which chats would be left
@@ -502,7 +502,7 @@ async def test_autoleave(c: Client, msg: types.Message) -> None:
             last_activity = chat_data.get("last_activity", 0)
             current_time = time.time()
             
-            if current_time - last_activity >= (7 * 24 * 3600):
+            if current_time - last_activity >= (24 * 3600):
                 chats_to_leave.append(chat_id)
 
         if not chats_to_leave:
@@ -520,6 +520,84 @@ async def test_autoleave(c: Client, msg: types.Message) -> None:
             text += f"... and {len(chats_to_leave) - 10} more\n"
 
         await msg.reply_text(text)
+
+    except Exception as e:
+        await msg.reply_text(f"❌ Error: {str(e)}")
+
+
+@Client.on_message(filters=Filter.command("force_autoleave"))
+async def force_autoleave(c: Client, msg: types.Message) -> None:
+    """Force immediate auto-leave of inactive chats."""
+    if msg.from_id not in config.DEVS:
+        return
+
+    try:
+        # Get inactive chats
+        inactive_chats = await db.get_inactive_chats(max_inactive_days=1)
+        
+        if not inactive_chats:
+            await msg.reply_text("✅ No chats inactive for 1 day found")
+            return
+
+        # Check which chats would be left
+        chats_to_leave = []
+        for chat_id in inactive_chats:
+            if chat_cache.is_active(chat_id):
+                continue
+            
+            chat_data = chat_cache.chat_cache.get(chat_id, {})
+            last_activity = chat_data.get("last_activity", 0)
+            current_time = time.time()
+            
+            if current_time - last_activity >= (24 * 3600):
+                chats_to_leave.append(chat_id)
+
+        if not chats_to_leave:
+            await msg.reply_text("✅ No chats would be left after activity check")
+            return
+
+        # Force leave operation
+        from TgMusic.modules.jobs import InactiveCallManager
+        call_manager = InactiveCallManager(c)
+        
+        # Execute leave operation
+        left_count = await call_manager._leave_inactive_chats(chats_to_leave)
+        
+        text = f"🚪 <b>Force Auto-Leave Results</b>\n\n"
+        text += f"📊 <b>Total Inactive Chats:</b> {len(inactive_chats)}\n"
+        text += f"🚪 <b>Chats to Leave:</b> {len(chats_to_leave)}\n"
+        text += f"✅ <b>Successfully Left:</b> {left_count}\n\n"
+        text += f"📋 <b>Chat IDs Processed:</b>\n"
+        for chat_id in chats_to_leave[:10]:  # Show first 10
+            text += f"• {chat_id}\n"
+        
+        if len(chats_to_leave) > 10:
+            text += f"... and {len(chats_to_leave) - 10} more\n"
+
+        await msg.reply_text(text)
+
+    except Exception as e:
+        await msg.reply_text(f"❌ Error: {str(e)}")
+
+
+@Client.on_message(filters=Filter.command("update_activity"))
+async def update_activity(c: Client, msg: types.Message) -> None:
+    """Manually update activity for current chat."""
+    if msg.from_id not in config.DEVS:
+        return
+
+    try:
+        chat_id = msg.chat_id
+        current_time = time.time()
+        
+        # Update activity in database
+        await db.update_chat_activity(chat_id)
+        
+        # Update activity in cache
+        if chat_id in chat_cache.chat_cache:
+            chat_cache.chat_cache[chat_id]["last_activity"] = current_time
+        
+        await msg.reply_text(f"✅ Activity updated for chat {chat_id} at {current_time}")
 
     except Exception as e:
         await msg.reply_text(f"❌ Error: {str(e)}")

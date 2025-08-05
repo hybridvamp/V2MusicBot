@@ -260,23 +260,23 @@ class OptimizedInactiveCallManager:
         self.metrics.total_runtime = time.time() - loop_start_time
 
     async def _leave_loop(self):
-        """Auto-leave loop with 1-week inactivity timer and activity detection."""
+        """Auto-leave loop with 1-day inactivity timer and activity detection."""
         while not self._stop.is_set():
             try:
-                # Check for inactive chats every 6 hours
-                await asyncio.sleep(6 * 3600)  # 6 hours
+                # Check for inactive chats every 30 minutes
+                await asyncio.sleep(30 * 60)  # 30 minutes
                 
                 if self._stop.is_set():
                     break
 
-                # Get inactive chats (inactive for 1 week)
-                inactive_chats = await db.get_inactive_chats(max_inactive_days=7)
+                # Get inactive chats (inactive for 1 day)
+                inactive_chats = await db.get_inactive_chats(max_inactive_days=1)
                 
                 if not inactive_chats:
-                    LOGGER.info("No chats inactive for 1 week found")
+                    LOGGER.info("No chats inactive for 1 day found")
                     continue
 
-                LOGGER.info("Found %d chats inactive for 1 week, checking for activity...", len(inactive_chats))
+                LOGGER.info("Found %d chats inactive for 1 day, checking for activity...", len(inactive_chats))
                 
                 # Check each inactive chat for recent activity
                 chats_to_leave = []
@@ -291,8 +291,8 @@ class OptimizedInactiveCallManager:
                     last_activity = chat_data.get("last_activity", 0)
                     current_time = time.time()
                     
-                    # If last activity was within 1 week, don't leave
-                    if current_time - last_activity < (7 * 24 * 3600):
+                    # If last activity was within 1 day, don't leave
+                    if current_time - last_activity < (24 * 3600):
                         LOGGER.debug("Chat %s has recent activity, skipping leave", chat_id)
                         continue
                     
@@ -302,7 +302,7 @@ class OptimizedInactiveCallManager:
                     LOGGER.info("No chats to leave after activity check")
                     continue
 
-                LOGGER.info("Leaving %d inactive chats after 1 week of inactivity", len(chats_to_leave))
+                LOGGER.info("Leaving %d inactive chats after 1 day of inactivity", len(chats_to_leave))
                 
                 # Execute leave operation for inactive chats
                 await self._leave_inactive_chats(chats_to_leave)
