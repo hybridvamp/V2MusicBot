@@ -6,3 +6,4 @@ __pycache__/
 /tgmusicbot.egg-info
 *.log
 cookies.txt
+backups/*.tar.gz

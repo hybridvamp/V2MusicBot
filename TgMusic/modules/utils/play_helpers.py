@@ -193,9 +193,7 @@ async def reply_auto_delete_message(
         Union[types.Message, types.Error]: The sent message or error.
     """
     try:
-        msg = await client.replyTextMessage(
-            chat_id=message.chat_id,
-            message_id=message.id,
+        msg = await message.reply_text(
             text=text,
             **kwargs
         )

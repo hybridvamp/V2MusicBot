@@ -373,7 +373,7 @@ async def _handle_text_search(
 async def handle_play_command(c: Client, msg: types.Message, is_video: bool = False):
     """Main handler for /play and /vplay commands with enhanced error handling."""
     chat_id = msg.chat_id
-    user_id = msg.from_id if msg.from_user else None
+    user_id = msg.from_id
 
     # Record command execution
     metrics_manager.bot_metrics.record_command("play", success=True)
