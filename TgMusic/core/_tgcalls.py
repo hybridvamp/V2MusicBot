@@ -370,7 +370,15 @@ class Calls:
             Path to the downloaded file or types.Error if download fails
         """
         song_url = song.url
-        wrapper = DownloaderWrapper(song_url)
+        
+        # Use YouTubeData for YouTube URLs, DownloaderWrapper for others
+        from TgMusic.core import YouTubeData, DownloaderWrapper
+        
+        if "youtube.com" in song_url or "youtu.be" in song_url:
+            wrapper = YouTubeData(song_url)
+        else:
+            wrapper = DownloaderWrapper(song_url)
+            
         if wrapper.is_valid(song_url):
             track_info = await wrapper.get_track()
             if isinstance(track_info, types.Error):

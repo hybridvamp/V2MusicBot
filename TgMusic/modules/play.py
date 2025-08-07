@@ -321,7 +321,7 @@ async def _handle_telegram_file(
 async def _handle_text_search(
     c: Client,
     msg: types.Message,
-    wrapper: DownloaderWrapper,
+    wrapper,
     user_by: str,
 ):
     """Handle text-based music searches."""
@@ -346,7 +346,11 @@ async def _handle_text_search(
     # Direct play if configured
     if play_type == 0:
         track_url = search_result.tracks[0].url
-        track_info = await DownloaderWrapper(track_url).get_info()
+        # Use appropriate wrapper based on URL
+        if "youtube.com" in track_url or "youtu.be" in track_url:
+            track_info = await YouTubeData(track_url).get_info()
+        else:
+            track_info = await DownloaderWrapper(track_url).get_info()
         if isinstance(track_info, types.Error):
             return await edit_text(
                 msg,
@@ -432,7 +436,15 @@ async def handle_play_command(c: Client, msg: types.Message, is_video: bool = Fa
 
         # Initialize appropriate downloader with error handling
         try:
-            wrapper = (YouTubeData if is_video else DownloaderWrapper)(url or args)
+            # For video, always use YouTubeData for search
+            if is_video:
+                wrapper = YouTubeData(url or args)
+            else:
+                # For audio, use YouTubeData for YouTube URLs, DownloaderWrapper for others
+                if url and ("youtube.com" in url or "youtu.be" in url):
+                    wrapper = YouTubeData(url)
+                else:
+                    wrapper = DownloaderWrapper(url or args)
         except Exception as e:
             LOGGER.error(f"Error initializing downloader: {e}")
             metrics_manager.bot_metrics.record_command("play", success=False, error="downloader_init")
@@ -508,7 +520,7 @@ async def handle_play_command(c: Client, msg: types.Message, is_video: bool = Fa
                 )
 
             # Play first video result
-            video_info = await DownloaderWrapper(search_result.tracks[0].url).get_info()
+            video_info = await YouTubeData(search_result.tracks[0].url).get_info()
             if isinstance(video_info, types.Error):
                 return await edit_text(
                     status_msg,
