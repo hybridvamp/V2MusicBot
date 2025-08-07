@@ -144,31 +144,88 @@ class BotConfig:
         return [url.strip() for url in value.replace(",", " ").split() if url.strip()]
 
     def _validate_config(self) -> None:
-        """Validate all required environment configuration values."""
-        missing = [
-            name
-            for name in ("API_ID", "API_HASH", "TOKEN", "MONGO_URI", "LOGGER_ID", "DB_NAME", "START_IMG")
-            if not getattr(self, name)
-        ]
+        """Validate all required environment configuration values with enhanced error handling."""
+        missing = []
+        validation_errors = []
+        
+        # Check required fields
+        required_fields = {
+            "API_ID": self.API_ID,
+            "API_HASH": self.API_HASH,
+            "TOKEN": self.TOKEN,
+            "MONGO_URI": self.MONGO_URI,
+            "LOGGER_ID": self.LOGGER_ID,
+            "DB_NAME": self.DB_NAME,
+            "START_IMG": self.START_IMG
+        }
+        
+        for name, value in required_fields.items():
+            if not value:
+                missing.append(name)
+        
         if missing:
-            raise ValueError(f"Missing required config: {', '.join(missing)}")
+            validation_errors.append(f"Missing required config: {', '.join(missing)}")
 
-        if not isinstance(self.MONGO_URI, str):
-            raise ValueError("MONGO_URI must be a string")
+        # Validate data types
+        if self.MONGO_URI and not isinstance(self.MONGO_URI, str):
+            validation_errors.append("MONGO_URI must be a string")
+        
+        if self.API_ID and not isinstance(self.API_ID, int):
+            validation_errors.append("API_ID must be an integer")
+        
+        if self.LOGGER_ID and not isinstance(self.LOGGER_ID, int):
+            validation_errors.append("LOGGER_ID must be an integer")
 
+        # Validate session strings
         if not self.SESSION_STRINGS:
-            raise ValueError("At least one session string (STRING1–10) is required")
+            validation_errors.append("At least one session string (STRING1–10) is required")
+        elif len(self.SESSION_STRINGS) < 1:
+            validation_errors.append("At least one valid session string is required")
 
+        # Validate URLs
+        if self.SUPPORT_GROUP and not self.SUPPORT_GROUP.startswith(('http://', 'https://', 't.me/')):
+            validation_errors.append("SUPPORT_GROUP must be a valid URL")
+        
+        if self.SUPPORT_CHANNEL and not self.SUPPORT_CHANNEL.startswith(('http://', 'https://', 't.me/')):
+            validation_errors.append("SUPPORT_CHANNEL must be a valid URL")
+        
+        if self.START_IMG and not self.START_IMG.startswith(('http://', 'https://')):
+            validation_errors.append("START_IMG must be a valid image URL")
+
+        # Validate numeric ranges
+        if self.MIN_MEMBER_COUNT and (self.MIN_MEMBER_COUNT < 1 or self.MIN_MEMBER_COUNT > 1000000):
+            validation_errors.append("MIN_MEMBER_COUNT must be between 1 and 1,000,000")
+
+        # Validate service type
+        valid_services = ["youtube", "spotify", "jiosaavn", "soundcloud"]
+        if self.DEFAULT_SERVICE and self.DEFAULT_SERVICE not in valid_services:
+            validation_errors.append(f"DEFAULT_SERVICE must be one of: {', '.join(valid_services)}")
+
+        # Clean up database if needed
         if self.IGNORE_BACKGROUND_UPDATES:
             db_path = Path("database")
             if db_path.exists():
-                shutil.rmtree(db_path)
+                try:
+                    shutil.rmtree(db_path)
+                    LOGGER.info("Cleaned up old database directory")
+                except Exception as e:
+                    validation_errors.append(f"Failed to clean database directory: {e}")
 
+        # Create required directories
         try:
             self.DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
             Path("database/photos").mkdir(parents=True, exist_ok=True)
+            Path("logs").mkdir(parents=True, exist_ok=True)
+            LOGGER.info("Created required directories")
         except Exception as e:
-            raise RuntimeError(f"Failed to create required directories: {e}") from e
+            validation_errors.append(f"Failed to create required directories: {e}")
+
+        # Raise comprehensive error if any validation failed
+        if validation_errors:
+            error_message = "\n".join([f"• {error}" for error in validation_errors])
+            raise ValueError(f"Configuration validation failed:\n{error_message}")
+        
+        LOGGER.info("Configuration validation passed successfully")
 
 
 config: BotConfig = BotConfig()

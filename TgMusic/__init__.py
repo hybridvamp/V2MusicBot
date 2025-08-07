@@ -1,6 +1,7 @@
 # Copyright (c) 2025 AshokShau
 # Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
 # Part of the TgMusicBot project. All rights reserved where applicable.
+#  Modified by Devin - Major modifications and improvements
 
 
 import asyncio
@@ -49,10 +50,23 @@ class Bot(Client):
     async def start(self) -> None:
         """Start the bot and all associated services with proper error handling."""
         try:
+            # Start metrics monitoring
+            from TgMusic.core.metrics import metrics_manager
+            metrics_manager.start_monitoring()
+            
             await self._initialize_components()
             uptime = self._get_uptime()
             self.logger.info(f"Bot started successfully in {uptime:.2f} seconds")
             self.logger.info(f"Version: {self._version}")
+            
+            # Log startup statistics
+            self.logger.info("=" * 60)
+            self.logger.info("Bot initialization completed successfully")
+            self.logger.info(f"Session strings configured: {len(self.config.SESSION_STRINGS)}")
+            self.logger.info(f"Default service: {self.config.DEFAULT_SERVICE}")
+            self.logger.info(f"Auto leave enabled: {self.config.AUTO_LEAVE}")
+            self.logger.info("=" * 60)
+            
         except Exception as e:
             self.logger.critical(f"Failed to start bot: {e}", exc_info=True)
             raise
@@ -83,6 +97,19 @@ class Bot(Client):
 
     async def stop(self, graceful: bool = True) -> None:
         try:
+            # Stop metrics monitoring
+            from TgMusic.core.metrics import metrics_manager
+            metrics_manager.stop_monitoring()
+            
+            # Log final statistics
+            stats = metrics_manager.get_comprehensive_stats()
+            self.logger.info("=" * 60)
+            self.logger.info("Bot shutdown initiated")
+            self.logger.info(f"Total commands executed: {stats['bot']['total_commands']}")
+            self.logger.info(f"Total errors encountered: {stats['bot']['total_errors']}")
+            self.logger.info(f"Active chats: {stats['bot']['active_chats']}")
+            self.logger.info("=" * 60)
+            
             shutdown_tasks = [
                 self.db.close(),
                 self.call_manager.stop(),
@@ -92,6 +119,9 @@ class Bot(Client):
                 await asyncio.gather(*shutdown_tasks, super().stop())
             else:
                 await super().stop()
+                
+            self.logger.info("Bot shutdown completed successfully")
+            
         except Exception as e:
             self.logger.error(f"Error during shutdown: {e}", exc_info=True)
             raise

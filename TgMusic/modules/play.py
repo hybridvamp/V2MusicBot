@@ -22,12 +22,15 @@ from TgMusic.core import (
     language_manager,
 )
 from TgMusic.core.admins import is_admin, load_admin_cache
+from TgMusic.core.error_handler import error_handler_decorator, ErrorSeverity, ErrorResponse
+from TgMusic.core.metrics import metrics_manager, performance_monitor
 from TgMusic.modules.utils import sec_to_min, get_audio_duration
 from TgMusic.modules.utils.play_helpers import (
     del_msg,
     edit_text,
     extract_argument,
     get_url,
+    reply_auto_delete_message,
 )
 from TgMusic.core.thumbnails import gen_thumb
 
@@ -365,119 +368,174 @@ async def _handle_text_search(
     return None
 
 
+@performance_monitor("play_command")
+@error_handler_decorator("play_command", ErrorSeverity.MEDIUM)
 async def handle_play_command(c: Client, msg: types.Message, is_video: bool = False):
-    """Main handler for /play and /vplay commands."""
+    """Main handler for /play and /vplay commands with enhanced error handling."""
     chat_id = msg.chat_id
+    user_id = msg.from_id if msg.from_user else None
 
-    user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
-    
-    # Validate chat type
-    if chat_id > 0:
-        return await msg.reply_text(language_manager.get_text("playback_groups_only", user_lang))
+    # Record command execution
+    metrics_manager.bot_metrics.record_command("play", success=True)
+    metrics_manager.bot_metrics.active_chats.add(chat_id)
 
-    # Track activity for this chat
-    await db.update_chat_activity(chat_id)
-    chat_cache.update_activity(chat_id)
+    try:
+        user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
+        
+        # Validate chat type
+        if chat_id > 0:
+            metrics_manager.bot_metrics.record_command("play", success=False, error="private_chat")
+            return await msg.reply_text(language_manager.get_text("playback_groups_only", user_lang))
 
-    # Check queue limit
-    queue = chat_cache.get_queue(chat_id)
-    if len(queue) > 10:
-        return await msg.reply_text(
-            language_manager.get_text("playback_queue_limit", user_lang)
-        )
+        # Track activity for this chat
+        await db.update_chat_activity(chat_id)
+        chat_cache.update_activity(chat_id)
 
-    # Verify bot admin status
-    await load_admin_cache(c, chat_id)
-    if not await is_admin(chat_id, c.me.id):
-        return await msg.reply_text(
-            language_manager.get_text("playback_admin_required", user_lang)
-        )
-
-    # Get message context
-    reply = await msg.getRepliedMessage() if msg.reply_to_message_id else None
-    url = await get_url(msg, reply)
-    args = extract_argument(msg.text)
-
-    # Send initial response
-    status_msg = await msg.reply_text(language_manager.get_text("playback_processing", user_lang))
-    if isinstance(status_msg, types.Error):
-        LOGGER.error("Failed to send status message: %s", status_msg)
-        return None
-
-    await del_msg(msg)  # Clean up command message
-
-    # Initialize appropriate downloader
-    wrapper = (YouTubeData if is_video else DownloaderWrapper)(url or args)
-
-    # Validate input
-    if not args and not url and (not reply or not tg.is_valid(reply)):
-        usage_text = (
-            language_manager.get_text("playback_usage", user_lang) +
-            f"/{'vplay' if is_video else 'play'} [song_name|URL]\n\n"
-            "Supported platforms:\n"
-            "▫ YouTube\n▫ Spotify\n▫ JioSaavn\n▫ SoundCloud\n▫ Apple Music"
-        )
-        return await edit_text(status_msg, text=usage_text, reply_markup=SupportButton)
-
-    requester = await msg.mention()
-
-    # Handle Telegram file attachments
-    if reply and tg.is_valid(reply):
-        return await _handle_telegram_file(c, reply, status_msg, requester)
-
-    # Handle URL playback
-    if url:
-        if not wrapper.is_valid(url):
-            return await edit_text(
-                status_msg,
-                text=(
-                    language_manager.get_text("playback_unsupported_url", user_lang) +
-                    "Supported platforms:\n"
-                    "▫ YouTube\n▫ Spotify\n▫ JioSaavn\n▫ SoundCloud\n▫ Apple Music"
-                ),
-                reply_markup=SupportButton,
+        # Check queue limit with better error handling
+        queue = chat_cache.get_queue(chat_id)
+        if len(queue) > 10:
+            metrics_manager.bot_metrics.record_command("play", success=False, error="queue_limit")
+            return await msg.reply_text(
+                language_manager.get_text("playback_queue_limit", user_lang)
             )
 
-        track_info = await wrapper.get_info()
-        if isinstance(track_info, types.Error):
-            return await edit_text(
-                status_msg,
-                text=language_manager.get_text("playback_track_info_error_retrieve", user_lang, error=track_info.message),
-                reply_markup=SupportButton,
+        # Verify bot admin status
+        await load_admin_cache(c, chat_id)
+        if not await is_admin(chat_id, c.me.id):
+            metrics_manager.bot_metrics.record_command("play", success=False, error="admin_required")
+            return await msg.reply_text(
+                language_manager.get_text("playback_admin_required", user_lang)
             )
 
-        return await play_music(c, status_msg, track_info, requester, is_video=is_video)
+        # Get message context with error handling
+        try:
+            reply = await msg.getRepliedMessage() if msg.reply_to_message_id else None
+            url = await get_url(msg, reply)
+            args = extract_argument(msg.text)
+        except Exception as e:
+            LOGGER.error(f"Error getting message context: {e}")
+            metrics_manager.bot_metrics.record_command("play", success=False, error="context_error")
+            return await msg.reply_text("❌ Error processing message context")
 
-    # Handle text search for audio only
-    if not is_video:
-        return await _handle_text_search(c, status_msg, wrapper, requester)
+        # Send initial response with error handling
+        try:
+            status_msg = await msg.reply_text(language_manager.get_text("playback_processing", user_lang))
+            if isinstance(status_msg, types.Error):
+                LOGGER.error("Failed to send status message: %s", status_msg)
+                metrics_manager.bot_metrics.record_command("play", success=False, error="status_msg_failed")
+                return None
+        except Exception as e:
+            LOGGER.error(f"Error sending status message: {e}")
+            return None
 
-    # Handle video search
-    search_result = await wrapper.search()
-    if isinstance(search_result, types.Error):
-        return await edit_text(
-            status_msg,
-            text=language_manager.get_text("playback_search_failed", user_lang, error=search_result.message),
-            reply_markup=SupportButton,
+        await del_msg(msg)  # Clean up command message
+
+        # Initialize appropriate downloader with error handling
+        try:
+            wrapper = (YouTubeData if is_video else DownloaderWrapper)(url or args)
+        except Exception as e:
+            LOGGER.error(f"Error initializing downloader: {e}")
+            metrics_manager.bot_metrics.record_command("play", success=False, error="downloader_init")
+            return await edit_text(status_msg, text="❌ Error initializing downloader")
+
+        # Validate input
+        if not args and not url and (not reply or not tg.is_valid(reply)):
+            usage_text = (
+                language_manager.get_text("playback_usage", user_lang) +
+                f"/{'vplay' if is_video else 'play'} [song_name|URL]\n\n"
+                "Supported platforms:\n"
+                "▫ YouTube\n▫ Spotify\n▫ JioSaavn\n▫ SoundCloud\n▫ Apple Music"
+            )
+            return await edit_text(status_msg, text=usage_text, reply_markup=SupportButton)
+
+        requester = await msg.mention()
+
+        # Handle Telegram file attachments
+        if reply and tg.is_valid(reply):
+            return await _handle_telegram_file(c, reply, status_msg, requester)
+
+        # Handle URL playback with enhanced error handling
+        if url:
+            if not wrapper.is_valid(url):
+                metrics_manager.bot_metrics.record_command("play", success=False, error="unsupported_url")
+                return await edit_text(
+                    status_msg,
+                    text=(
+                        language_manager.get_text("playback_unsupported_url", user_lang) +
+                        "Supported platforms:\n"
+                        "▫ YouTube\n▫ Spotify\n▫ JioSaavn\n▫ SoundCloud\n▫ Apple Music"
+                    ),
+                    reply_markup=SupportButton,
+                )
+
+            try:
+                track_info = await wrapper.get_info()
+                if isinstance(track_info, types.Error):
+                    metrics_manager.bot_metrics.record_command("play", success=False, error="track_info_error")
+                    return await edit_text(
+                        status_msg,
+                        text=language_manager.get_text("playback_track_info_error_retrieve", user_lang, error=track_info.message),
+                        reply_markup=SupportButton,
+                    )
+            except Exception as e:
+                LOGGER.error(f"Error getting track info: {e}")
+                metrics_manager.bot_metrics.record_command("play", success=False, error="track_info_exception")
+                return await edit_text(status_msg, text="❌ Error retrieving track information")
+
+            return await play_music(c, status_msg, track_info, requester, is_video=is_video)
+
+        # Handle text search for audio only
+        if not is_video:
+            return await _handle_text_search(c, status_msg, wrapper, requester)
+
+        # Handle video search with error handling
+        try:
+            search_result = await wrapper.search()
+            if isinstance(search_result, types.Error):
+                metrics_manager.bot_metrics.record_command("play", success=False, error="search_failed")
+                return await edit_text(
+                    status_msg,
+                    text=language_manager.get_text("playback_search_failed", user_lang, error=search_result.message),
+                    reply_markup=SupportButton,
+                )
+
+            if not search_result or not search_result.tracks:
+                metrics_manager.bot_metrics.record_command("play", success=False, error="no_results")
+                return await edit_text(
+                    status_msg,
+                    text=language_manager.get_text("playback_no_results", user_lang),
+                    reply_markup=SupportButton,
+                )
+
+            # Play first video result
+            video_info = await DownloaderWrapper(search_result.tracks[0].url).get_info()
+            if isinstance(video_info, types.Error):
+                return await edit_text(
+                    status_msg,
+                    text=f"⚠️ Video error: {video_info.message}",
+                    reply_markup=SupportButton,
+                )
+
+            return await play_music(c, status_msg, video_info, requester, is_video=True)
+            
+        except Exception as e:
+            LOGGER.error(f"Error in video search: {e}")
+            metrics_manager.bot_metrics.record_command("play", success=False, error="video_search_exception")
+            return await edit_text(status_msg, text="❌ Error during video search")
+            
+    except Exception as e:
+        metrics_manager.bot_metrics.record_command("play", success=False, error=str(e))
+        LOGGER.error(f"Error in play command for chat {chat_id}: {e}", exc_info=True)
+        
+        # Send user-friendly error message
+        user_lang = await language_manager.get_language(msg.from_id, chat_id)
+        error_response = ErrorResponse.from_exception(e, user_friendly=True)
+        await reply_auto_delete_message(
+            c, msg,
+            f"❌ {error_response.message}",
+            delay=10
         )
-
-    if not search_result or not search_result.tracks:
-        return await edit_text(
-            status_msg,
-            text=language_manager.get_text("playback_no_results", user_lang),
-            reply_markup=SupportButton,
-        )
-
-    # Play first video result
-    video_info = await DownloaderWrapper(search_result.tracks[0].url).get_info()
-    if isinstance(video_info, types.Error):
-        return await edit_text(
-            status_msg,
-            text=f"⚠️ Video error: {video_info.message}",
-            reply_markup=SupportButton,
-        )
-
-    return await play_music(c, status_msg, video_info, requester, is_video=True)
+        raise
 
 
 @Client.on_message(filters=Filter.command("play"))
