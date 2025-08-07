@@ -23,6 +23,7 @@ from ._filters import Filter
 from .buttons import SupportButton, control_buttons
 from ._save_cookies import save_all_cookies
 from ._language import language_manager
+from .metrics import metrics_manager
 
 __all__ = [
     "is_admin",
@@ -47,4 +48,5 @@ __all__ = [
     "SupportButton",
     "Filter",
     "language_manager",
+    "metrics_manager",
 ]
