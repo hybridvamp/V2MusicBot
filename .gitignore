@@ -8,3 +8,5 @@ __pycache__/
 cookies.txt
 backups/*.tar.gz
 .venv
+pyproject.toml
+logs/
