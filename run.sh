@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-BOT_NAME="TgMusicBot"
+BOT_NAME="HybridVCBot"
 LOG_DIR="logs"
 BACKUP_DIR="backups"
 MAX_LOG_SIZE="50M"

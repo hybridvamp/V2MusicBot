@@ -1,6 +1,6 @@
 #  Copyright (c) 2025 AshokShau
 #  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
-#  Part of the TgMusicBot project. All rights reserved where applicable.
+#  Part of the Hybrid VC Bot project. All rights reserved where applicable.
 #  Modified by Devin - Major modifications and improvements
 
 from typing import Dict, Any
@@ -8,7 +8,7 @@ from TgMusic.core._database import db
 
 
 class LanguageManager:
-    """Multi-language support system for TgMusicBot."""
+    """Multi-language support system for Hybrid VC Bot."""
     
     # Available languages
     SUPPORTED_LANGUAGES = {
@@ -64,7 +64,7 @@ class LanguageManager:
             "success_language_changed": "✅ Language changed successfully",
             
             # Performance Dashboard
-            "performance_title": "🔥 <b>TgMusicBot Performance Dashboard</b>",
+            "performance_title": "🔥 <b>Hybrid VC Bot Performance Dashboard</b>",
             "performance_system_info": "⏱️ <b>System Info:</b>",
             "performance_database": "💾 <b>Database Performance:</b>",
             "performance_music_cache": "🎵 <b>Music Cache:</b>",
@@ -118,14 +118,14 @@ class LanguageManager:
             "admin_no_users": "ℹ️ No authorized users found",
             
             # System Messages
-            "system_starting": "🚀 Starting TgMusicBot...",
-            "system_ready": "✅ TgMusicBot is ready!",
-            "system_shutdown": "🛑 Shutting down TgMusicBot...",
+            "system_starting": "🚀 Starting Hybrid VC Bot...",
+            "system_ready": "✅ Hybrid VC Bot is ready!",
+            "system_shutdown": "🛑 Shutting down Hybrid VC Bot...",
             "system_error": "❌ System error: {error}",
             
             # Privacy Policy
             "privacy_title": "🔒 Privacy Policy",
-            "privacy_content": "<b>Privacy Policy for TgMusicBot</b>\n\n<b>1. Information We Collect:</b>\n• Chat IDs and User IDs for bot functionality\n• Message content for music playback\n• Usage statistics for performance monitoring\n\n<b>2. How We Use Information:</b>\n• Provide music streaming services\n• Manage user permissions and settings\n• Improve bot performance and features\n\n<b>3. Data Storage:</b>\n• Data is stored securely in MongoDB\n• We do not share your data with third parties\n• You can request data deletion\n\n<b>4. Contact:</b>\nFor questions about this policy, contact us at <a href='https://t.me/+zFIaHmyIfwMzZjBl'>Support Group</a>",
+            "privacy_content": "<b>Privacy Policy for Hybrid VC Bot</b>\n\n<b>1. Information We Collect:</b>\n• Chat IDs and User IDs for bot functionality\n• Message content for music playback\n• Usage statistics for performance monitoring\n\n<b>2. How We Use Information:</b>\n• Provide music streaming services\n• Manage user permissions and settings\n• Improve bot performance and features\n\n<b>3. Data Storage:</b>\n• Data is stored securely in MongoDB\n• We do not share your data with third parties\n• You can request data deletion\n\n<b>4. Contact:</b>\nFor questions about this policy, contact us at <a href='https://t.me/+zFIaHmyIfwMzZjBl'>Support Group</a>",
             
             # Stats Messages
             "stats_title": "📊 <b>Bot Statistics</b>",
@@ -311,7 +311,7 @@ class LanguageManager:
             "success_language_changed": "✅ Bahasa berhasil diubah",
             
             # Performance Dashboard
-            "performance_title": "🔥 <b>Dashboard Performa TgMusicBot</b>",
+            "performance_title": "🔥 <b>Dashboard Performa Hybrid VC Bot</b>",
             "performance_system_info": "⏱️ <b>Info Sistem:</b>",
             "performance_database": "💾 <b>Performa Database:</b>",
             "performance_music_cache": "🎵 <b>Cache Musik:</b>",
@@ -365,14 +365,14 @@ class LanguageManager:
             "admin_no_users": "ℹ️ Tidak ada pengguna yang diizinkan",
             
             # System Messages
-            "system_starting": "🚀 Memulai TgMusicBot...",
-            "system_ready": "✅ TgMusicBot siap!",
-            "system_shutdown": "🛑 Mematikan TgMusicBot...",
+            "system_starting": "🚀 Memulai Hybrid VC Bot...",
+            "system_ready": "✅ Hybrid VC Bot siap!",
+            "system_shutdown": "🛑 Mematikan Hybrid VC Bot...",
             "system_error": "❌ Error sistem: {error}",
             
             # Privacy Policy
             "privacy_title": "🔒 Kebijakan Privasi",
-            "privacy_content": "<b>Kebijakan Privasi untuk TgMusicBot</b>\n\n<b>1. Informasi yang Kami Kumpulkan:</b>\n• Chat ID dan User ID untuk fungsi bot\n• Konten pesan untuk pemutaran musik\n• Statistik penggunaan untuk pemantauan performa\n\n<b>2. Bagaimana Kami Menggunakan Informasi:</b>\n• Menyediakan layanan streaming musik\n• Mengelola izin dan pengaturan pengguna\n• Meningkatkan performa dan fitur bot\n\n<b>3. Penyimpanan Data:</b>\n• Data disimpan dengan aman di MongoDB\n• Kami tidak membagikan data Anda dengan pihak ketiga\n• Anda dapat meminta penghapusan data\n\n<b>4. Kontak:</b>\nUntuk pertanyaan tentang kebijakan ini, hubungi kami di <a href='https://t.me/+zFIaHmyIfwMzZjBl'>Grup Dukungan</a>",
+            "privacy_content": "<b>Kebijakan Privasi untuk Hybrid VC Bot</b>\n\n<b>1. Informasi yang Kami Kumpulkan:</b>\n• Chat ID dan User ID untuk fungsi bot\n• Konten pesan untuk pemutaran musik\n• Statistik penggunaan untuk pemantauan performa\n\n<b>2. Bagaimana Kami Menggunakan Informasi:</b>\n• Menyediakan layanan streaming musik\n• Mengelola izin dan pengaturan pengguna\n• Meningkatkan performa dan fitur bot\n\n<b>3. Penyimpanan Data:</b>\n• Data disimpan dengan aman di MongoDB\n• Kami tidak membagikan data Anda dengan pihak ketiga\n• Anda dapat meminta penghapusan data\n\n<b>4. Kontak:</b>\nUntuk pertanyaan tentang kebijakan ini, hubungi kami di <a href='https://t.me/+zFIaHmyIfwMzZjBl'>Grup Dukungan</a>",
             
             # Stats Messages
             "stats_title": "📊 <b>Statistik Bot</b>",
