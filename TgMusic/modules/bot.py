@@ -182,7 +182,7 @@ async def performance_cmd(client: Client, message: types.Message) -> None:
             call_ping_info = "N/A"
         
         response = f"""
-🔥 <b>TgMusicBot Performance Dashboard</b>
+🔥 <b>Hybrid VC Bot Performance Dashboard</b>
 
 ⏱️ <b>System Info:</b>
 • Uptime: <code>{uptime_str}</code>
