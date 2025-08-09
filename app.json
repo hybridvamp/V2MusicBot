@@ -120,12 +120,12 @@
         },
         "SUPPORT_GROUP": {
             "description": "Telegram Group Link",
-            "value": "https://t.me/+zFIaHmyIfwMzZjBl",
+            "value": "https://t.me/esports9",
             "required": false
         },
         "SUPPORT_CHANNEL": {
             "description": "Telegram Channel Link",
-            "value": "https://t.me/FallenProjects",
+            "value": "https://t.me/hybridUpdates",
             "required": false
         },
         "AUTO_LEAVE": {

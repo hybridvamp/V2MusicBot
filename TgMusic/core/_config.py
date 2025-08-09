@@ -47,11 +47,11 @@ class BotConfig:
         self.DOWNLOADS_DIR: Path = Path(os.getenv("DOWNLOADS_DIR", "database/music"))
 
         self.SUPPORT_GROUP: str = os.getenv(
-                "SUPPORT_GROUP", "https://t.me/+zFIaHmyIfwMzZjBl"
-    ) or "https://t.me/+zFIaHmyIfwMzZjBl"
+                "SUPPORT_GROUP", "https://t.me/esports9"
+    ) or "https://t.me/esports9"
         self.SUPPORT_CHANNEL: str = os.getenv(
-            "SUPPORT_CHANNEL", "https://t.me/FallenProjects"
-        ) or "https://t.me/FallenProjects"
+            "SUPPORT_CHANNEL", "https://t.me/hybridUpdates"
+        ) or "https://t.me/hybridUpdates"
 
         self.START_IMG: str = os.getenv(
             "START_IMG", "https://i.pinimg.com/1200x/e8/89/d3/e889d394e0afddfb0eb1df0ab663df95.jpg"

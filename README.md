@@ -385,8 +385,8 @@ tgmusic
 | `PROXY`            | Proxy URL for the bot if you want to use it for yt-dlp (Optional) | Any online service                                                                                                                                                      |
 | `COOKIES_URL`      | Cookies URL for the bot                                           | [![Cookie Guide](https://img.shields.io/badge/Guide-Read%20Here-blue?style=flat-square)](https://github.com/depinrise/TgMusicBotFork/blob/main/TgMusic/cookies/README.md) |
 | `DEFAULT_SERVICE`  | Default search platform (Options: youtube, spotify, jiosaavn)     | Default: youtube                                                                                                                                                        |
-| `SUPPORT_GROUP`    | Telegram Group Link                                               | Default: https://t.me/+zFIaHmyIfwMzZjBl                                                                                                                                     |
-| `SUPPORT_CHANNEL`  | Telegram Channel Link                                             | Default: https://t.me/FallenProjects                                                                                                                                    |
+| `SUPPORT_GROUP`    | Telegram Group Link                                               | Default: https://t.me/esports9                                                                                                                                     |
+| `SUPPORT_CHANNEL`  | Telegram Channel Link                                             | Default: https://t.me/hybridUpdates                                                                                                                                    |
 | `AUTO_LEAVE`       | Leave all chats for all userbot clients                           | Default: True                                                                                                                                                           |
 | `START_IMG`        | Start Image URL                                                   | Default: [IMG](https://i.pinimg.com/1200x/e8/89/d3/e889d394e0afddfb0eb1df0ab663df95.jpg)                                                                                |                                                      |
 | `DEVS`             | User ID of the bot owner                                          | [@GuardxRobot](https://t.me/GuardxRobot) and type `/id`: e.g. `5938660179, 5956803759`                                                                                  |
@@ -445,7 +445,7 @@ Forked and maintained by [Devin](https://github.com/depinrise)
 ## 💖 Support
 
 Help keep this project alive!  
-[![Telegram](https://img.shields.io/badge/Chat-Support%20Group-blue?logo=telegram)](https://t.me/+zFIaHmyIfwMzZjBl)  
+[![Telegram](https://img.shields.io/badge/Chat-Support%20Group-blue?logo=telegram)](https://t.me/esports9)  
 [![Donate](https://img.shields.io/badge/Donate-Crypto/PayPal-ff69b4)](https://t.me/AshokShau)
 
 ---
@@ -453,7 +453,7 @@ Help keep this project alive!
 ## 🔗 Connect
 
 [![GitHub](https://img.shields.io/badge/Follow-GitHub-black?logo=github)](https://github.com/AshokShau)  
-[![Channel](https://img.shields.io/badge/Updates-Channel-blue?logo=telegram)](https://t.me/FallenProjects)
+[![Channel](https://img.shields.io/badge/Updates-Channel-blue?logo=telegram)](https://t.me/hybridUpdates)
 
 ---
 <p align="center">

@@ -125,7 +125,7 @@ class LanguageManager:
             
             # Privacy Policy
             "privacy_title": "🔒 Privacy Policy",
-            "privacy_content": "<b>Privacy Policy for Hybrid VC Bot</b>\n\n<b>1. Information We Collect:</b>\n• Chat IDs and User IDs for bot functionality\n• Message content for music playback\n• Usage statistics for performance monitoring\n\n<b>2. How We Use Information:</b>\n• Provide music streaming services\n• Manage user permissions and settings\n• Improve bot performance and features\n\n<b>3. Data Storage:</b>\n• Data is stored securely in MongoDB\n• We do not share your data with third parties\n• You can request data deletion\n\n<b>4. Contact:</b>\nFor questions about this policy, contact us at <a href='https://t.me/+zFIaHmyIfwMzZjBl'>Support Group</a>",
+            "privacy_content": "<b>Privacy Policy for Hybrid VC Bot</b>\n\n<b>1. Information We Collect:</b>\n• Chat IDs and User IDs for bot functionality\n• Message content for music playback\n• Usage statistics for performance monitoring\n\n<b>2. How We Use Information:</b>\n• Provide music streaming services\n• Manage user permissions and settings\n• Improve bot performance and features\n\n<b>3. Data Storage:</b>\n• Data is stored securely in MongoDB\n• We do not share your data with third parties\n• You can request data deletion\n\n<b>4. Contact:</b>\nFor questions about this policy, contact us at <a href='https://t.me/esports9'>Support Group</a>",
             
             # Stats Messages
             "stats_title": "📊 <b>Bot Statistics</b>",
@@ -372,7 +372,7 @@ class LanguageManager:
             
             # Privacy Policy
             "privacy_title": "🔒 Kebijakan Privasi",
-            "privacy_content": "<b>Kebijakan Privasi untuk Hybrid VC Bot</b>\n\n<b>1. Informasi yang Kami Kumpulkan:</b>\n• Chat ID dan User ID untuk fungsi bot\n• Konten pesan untuk pemutaran musik\n• Statistik penggunaan untuk pemantauan performa\n\n<b>2. Bagaimana Kami Menggunakan Informasi:</b>\n• Menyediakan layanan streaming musik\n• Mengelola izin dan pengaturan pengguna\n• Meningkatkan performa dan fitur bot\n\n<b>3. Penyimpanan Data:</b>\n• Data disimpan dengan aman di MongoDB\n• Kami tidak membagikan data Anda dengan pihak ketiga\n• Anda dapat meminta penghapusan data\n\n<b>4. Kontak:</b>\nUntuk pertanyaan tentang kebijakan ini, hubungi kami di <a href='https://t.me/+zFIaHmyIfwMzZjBl'>Grup Dukungan</a>",
+            "privacy_content": "<b>Kebijakan Privasi untuk Hybrid VC Bot</b>\n\n<b>1. Informasi yang Kami Kumpulkan:</b>\n• Chat ID dan User ID untuk fungsi bot\n• Konten pesan untuk pemutaran musik\n• Statistik penggunaan untuk pemantauan performa\n\n<b>2. Bagaimana Kami Menggunakan Informasi:</b>\n• Menyediakan layanan streaming musik\n• Mengelola izin dan pengaturan pengguna\n• Meningkatkan performa dan fitur bot\n\n<b>3. Penyimpanan Data:</b>\n• Data disimpan dengan aman di MongoDB\n• Kami tidak membagikan data Anda dengan pihak ketiga\n• Anda dapat meminta penghapusan data\n\n<b>4. Kontak:</b>\nUntuk pertanyaan tentang kebijakan ini, hubungi kami di <a href='https://t.me/esports9'>Grup Dukungan</a>",
             
             # Stats Messages
             "stats_title": "📊 <b>Statistik Bot</b>",
