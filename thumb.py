@@ -1,22 +1,40 @@
-#  Copyright (c) 2025 AshokShau
-#  Licensed under the GNU AGPL v3.0: https://www.gnu.org/licenses/agpl-3.0.html
-#  Part of the TgMusicBot project. All rights reserved where applicable.
-#  Modified by Devin - Major modifications and improvements
 
 import asyncio
 from io import BytesIO
-from pathlib import Path
 
 import httpx
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 from aiofiles.os import path as aiopath
 
-from ._dataclass import CachedTrack
-from TgMusic.logger import LOGGER
+# from TgMusic.logger import LOGGER
+
+from pathlib import Path
+from typing import Union
+from pydantic import BaseModel
+
+import logging
+from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+
+LOGGER = logging.getLogger("TgMusicBot")
+
+class CachedTrack(BaseModel):
+    url: str
+    name: str
+    artist: str
+    loop: int
+    user: str
+    file_path: Union[str, Path]
+    thumbnail: str
+    track_id: str
+    duration: int = 0
+    is_video: bool
+    platform: str
 
 FONTS = {
     "cfont": ImageFont.truetype("TgMusic/modules/utils/cfont.ttf", 15),
-    "dfont": ImageFont.truetype("TgMusic/modules/utils/font2.otf", 12),
+    "dfont": ImageFont.truetype("TgMusic/modules/utils/font2.otf", 15),
     "nfont": ImageFont.truetype("TgMusic/modules/utils/font.ttf", 10),
     "tfont": ImageFont.truetype("TgMusic/modules/utils/font.ttf", 20),
 }
@@ -164,10 +182,15 @@ def get_duration(duration: int, time: str = "0:24") -> str:
 
 
 async def gen_thumb(song: CachedTrack) -> str:
+    """
+    Generates and saves a thumbnail for the song using the provided UI template.
+    Now allows adjusting title/artist vertical position and font sizes.
+    """
+
     # === CONFIGURABLE SETTINGS ===
     TITLE_FONT_SIZE = 50     # base title font size
     ARTIST_FONT_SIZE = 22    # base artist font size
-    TITLE_UP_OFFSET = -75    # negative = move up, positive = move down
+    TITLE_UP_OFFSET = -75   # negative = move up, positive = move down
     ARTIST_UP_OFFSET = -5    # negative = move up, positive = move down
     # ==============================
 
@@ -317,3 +340,37 @@ async def gen_thumb(song: CachedTrack) -> str:
     Path(save_dir).parent.mkdir(parents=True, exist_ok=True)
     await asyncio.to_thread(base_img.save, save_dir)
     return save_dir if await aiopath.exists(save_dir) else ""
+
+
+def generate_random_string(length: int = 5) -> str:
+    """
+    Generates a random alphanumeric string of the specified length.
+    """
+    import random
+    import string
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+
+SONG = CachedTrack(
+    url="https://www.youtube.com/watch?v=0WM6-noV9ZY",
+    name="Alan Walker On My Way - Sabrina Carpender, Farruko & Conor Maynard",
+    artist="Alan Walker, Sabrina Carpenter, Farruko, Conor Maynard",
+    loop=0,
+    user="example_user",
+    file_path="example_song.mp3",
+    thumbnail="https://img.youtube.com/vi/0WM6-noV9ZY/maxresdefault.jpg",
+    track_id=generate_random_string(),
+    duration=240,
+    is_video=False,
+    platform="YouTube"
+)
+
+import asyncio
+# generate thumbnail for the example song
+async def main():
+    thumb_path = await gen_thumb(SONG)
+    print(f"Thumbnail saved at: {thumb_path}")
+    return thumb_path
+
+#run the main function
+if __name__ == "__main__":
+    asyncio.run(main())
