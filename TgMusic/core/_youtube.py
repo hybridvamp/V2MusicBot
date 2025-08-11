@@ -330,24 +330,23 @@ class YouTubeUtils:
 
     @staticmethod
     async def download_with_yt_dlp(video_id: str, video: bool) -> Optional[Path]:
-        """Download YouTube media using yt-dlp.
 
-        Args:
-            video_id (str): YouTube video ID.
-            video (bool): True to download video; False for audio only.
+        cookie_files = await YouTubeUtils.get_cookie_file()
+        success_path = None  # Store successful path
 
-        Returns:
-            Optional[str]: File path of the downloaded media, or None on failure.
-        """
-        cookie_file = await YouTubeUtils.get_cookie_file()
-        for cookie in cookie_file:
+        if not cookie_files or all(not c for c in cookie_files):
+            LOGGER.warning("No cookie files found, skipping yt-dlp download.")
+            return None
+
+        for cookie in cookie_files:
             if not cookie:
-                LOGGER.warning("No cookie file found, skipping yt-dlp download.")
-                return None
+                LOGGER.debug("Skipping empty cookie file entry.")
+                continue
+
             ytdlp_params = YouTubeUtils._build_ytdlp_params(video_id, video, cookie)
 
             try:
-                LOGGER.debug("Starting yt-dlp download for video ID: %s", video_id)
+                LOGGER.debug("Starting yt-dlp download for video ID: %s with cookie: %s", video_id, cookie)
 
                 proc = await asyncio.create_subprocess_exec(
                     *ytdlp_params,
@@ -359,20 +358,20 @@ class YouTubeUtils:
 
                 if proc.returncode != 0:
                     LOGGER.error(
-                        "yt-dlp failed for %s (code %d): %s",
+                        "yt-dlp failed for %s (code %d) with cookie %s: %s",
                         video_id,
                         proc.returncode,
+                        cookie,
                         stderr.decode().strip(),
                     )
-                    # return None
                     continue
 
                 downloaded_path_str = stdout.decode().strip()
                 if not downloaded_path_str:
                     LOGGER.error(
-                        "yt-dlp finished but no output path returned for %s", video_id
+                        "yt-dlp finished but no output path returned for %s with cookie %s",
+                        video_id, cookie
                     )
-                    # return None
                     continue
 
                 downloaded_path = Path(downloaded_path_str)
@@ -380,22 +379,23 @@ class YouTubeUtils:
                     LOGGER.error(
                         "yt-dlp reported path but file not found: %s", downloaded_path
                     )
-                    # return None
                     continue
 
-                LOGGER.info("Successfully downloaded %s to %s", video_id, downloaded_path)
-                return downloaded_path
+                LOGGER.info("Successfully downloaded %s to %s using cookie %s", video_id, downloaded_path, cookie)
+                success_path = downloaded_path
+                break  # Stop trying cookies after first success
 
             except asyncio.TimeoutError:
-                LOGGER.error("yt-dlp timed out for video ID: %s", video_id)
-                # return None
+                LOGGER.error("yt-dlp timed out for video ID: %s with cookie %s", video_id, cookie)
                 continue
             except Exception as e:
                 LOGGER.error(
-                    "Unexpected error downloading %s: %r", video_id, e, exc_info=True
+                    "Unexpected error downloading %s with cookie %s: %r", video_id, cookie, e, exc_info=True
                 )
-                # return None
                 continue
+
+        return success_path
+
 
 class YouTubeData(MusicService):
     """Handles YouTube music data operations including:
