@@ -198,8 +198,8 @@ class Calls:
         _stream = MediaStream(
             audio_path=file_path,
             media_path=file_path,
-            audio_parameters=AudioQuality.HIGH if video else AudioQuality.STUDIO,
-            video_parameters=VideoQuality.FHD_1080p if video else VideoQuality.SD_360p,
+            audio_parameters=AudioQuality.HI_RES_LOSSLESS  if video else AudioQuality.HI_RES_LOSSLESS,
+            video_parameters=VideoQuality.HI_RES_LOSSLESS  if video else VideoQuality.SD_360p,
             audio_flags=MediaStream.Flags.REQUIRED,
             video_flags=(
                 MediaStream.Flags.AUTO_DETECT if video else MediaStream.Flags.IGNORE
@@ -308,11 +308,10 @@ class Calls:
             duration = song.duration or await get_audio_duration(file_path)
 
             # Prepare a playback message
-            text = (
-                f"<b>Now Playing:</b>\n\n"
-                f"‣ <b>Title:</b> <a href='{song.url}'>{song.name}</a>\n"
-                f"‣ <b>Duration:</b> {sec_to_min(duration)}\n"
-                f"‣ <b>Requested by:</b> {song.user}"
+            text = (f"""<blockquote><b>Now Playing:</b>\n\n"
+‣ <b>Title:</b> <a href='{song.url}'>{song.name}</a>\n"
+‣ <b>Duration:</b> {sec_to_min(duration)}\n"
+‣ <b>Requested by:</b> {song.user}</blockquote>"""
             )
 
             thumbnail = (

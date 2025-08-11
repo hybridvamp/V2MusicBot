@@ -181,13 +181,13 @@ async def _handle_single_track(
     thumb = await gen_thumb(song) if await db.get_thumbnail_status(chat_id) else ""
     user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
     bot_name = c.me.first_name
-    now_playing = (
-        "╭─────────────⭓\n"
-        "🎶 <b>Now Playing</b>\n"
-        f"┣▹ 🎼 <b>Title:</b> <code>{song.name}</code>\n\n"
-        f"┣▹ 🕒 <b>Duration:</b> {sec_to_min(song.duration)}\n"
-        f"╰▹ 🙋 <b>Requested by:</b> {song.user}\n\n"
-        f"-▸ Sit back, relax, and enjoy the vibe!, powered by {bot_name} 🌟"
+    now_playing = (f"""<blockquote>🎵 <b>Now Playing</b>
+🎼 <b>Title:</b> <code>{song.name}</code>
+
+🕒 <b>Duration:</b> {sec_to_min(song.duration)}
+🙋 <b>Requested by:</b> {song.user}</blockquote>
+
+-▸ Powered by {bot_name} ⚡"""
     )
 
     update_result = await _update_msg_with_thumb(
