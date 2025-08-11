@@ -198,8 +198,8 @@ class Calls:
         _stream = MediaStream(
             audio_path=file_path,
             media_path=file_path,
-            audio_parameters=AudioQuality.HI_RES_LOSSLESS  if video else AudioQuality.HI_RES_LOSSLESS,
-            video_parameters=VideoQuality.HI_RES_LOSSLESS  if video else VideoQuality.SD_360p,
+            audio_parameters=AudioQuality.LOSSLESS  if video else AudioQuality.LOSSLESS,
+            video_parameters=VideoQuality.LOSSLESS  if video else VideoQuality.SD_360p,
             audio_flags=MediaStream.Flags.REQUIRED,
             video_flags=(
                 MediaStream.Flags.AUTO_DETECT if video else MediaStream.Flags.IGNORE
