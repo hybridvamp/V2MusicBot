@@ -308,11 +308,10 @@ class Calls:
             duration = song.duration or await get_audio_duration(file_path)
 
             # Prepare a playback message
-            text = (
-                f"<b>Now Playing:</b>\n\n"
-                f"‣ <b>Title:</b> <a href='{song.url}'>{song.name}</a>\n"
-                f"‣ <b>Duration:</b> {sec_to_min(duration)}\n"
-                f"‣ <b>Requested by:</b> {song.user}"
+            text = (f"""<blockquote><b>Now Playing:</b>\n\n"
+‣ <b>Title:</b> <a href='{song.url}'>{song.name}</a>\n"
+‣ <b>Duration:</b> {sec_to_min(duration)}\n"
+‣ <b>Requested by:</b> {song.user}</blockquote>"""
             )
 
             thumbnail = (

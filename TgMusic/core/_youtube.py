@@ -201,11 +201,6 @@ class YouTubeUtils:
             # random_file = random.choice(cookies_files)
             # cookie_path = os.path.join(cookie_dir, random_file)
             cookie_path = [os.path.join(cookie_dir, f) for f in cookies_files]
-            if isinstance(cookie_path, list):
-                LOGGER.info("Using cookie files from directory: %s", cookie_path)
-            else:
-                cookie_path = os.path.join(cookie_dir, cookies_files[0])
-                LOGGER.info("Using first cookie file from directory: %s", cookie_path)
             LOGGER.info("Using cookie file from directory: %s", cookie_path)
             return cookie_path
         except Exception as e:
