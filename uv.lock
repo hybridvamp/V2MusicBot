@@ -157,16 +157,16 @@ wheels = [
 
 [[package]]
 name = "anthraleia-pytgcalls"
-version = "1.0.3"
+version = "1.0.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "deprecation" },
     { name = "ntgcalls" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/29/e4/3ecded8876b6f6dc59f9d95545a1617dc269b658ac2d660e173d4259156e/anthraleia_pytgcalls-1.0.3.tar.gz", hash = "sha256:4f32807192781e4d9e4cfb4baa72c031ad91d81bd9f2f9eed86d2bccef40ad7b", size = 53391, upload-time = "2025-08-10T20:19:12.375Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/93/06/8b99261f974d3eb7273baf35accfa5bd26c7273532cbd75c214cdfb0d6ad/anthraleia_pytgcalls-1.0.11.tar.gz", hash = "sha256:366a9bda8885f3b8e7bbf0f45ce7989ff3e0c2073ff766fe007d0144fb5815f8", size = 54705, upload-time = "2025-08-10T21:38:11.019Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4a/e6/034f4d306742449740367edd0e388c7115c8663cb3999cdd4cfbc76a0a7c/anthraleia_pytgcalls-1.0.3-py3-none-any.whl", hash = "sha256:5123939b454b07b9fb4aa6bc55c22ec8df1e82814c91d849b4168e7218cd1883", size = 88880, upload-time = "2025-08-10T20:19:11.216Z" },
+    { url = "https://files.pythonhosted.org/packages/22/4a/9670449bcdb3f447e60306bb3c271d013dd71281362f66a5fac4a9a7dcf3/anthraleia_pytgcalls-1.0.11-py3-none-any.whl", hash = "sha256:49961392d5b5e2c96d4bf25777ebcf16a0dac667ae8e55b9cc8a5f426b913218", size = 89416, upload-time = "2025-08-10T21:38:09.24Z" },
 ]
 
 [[package]]
@@ -1291,7 +1291,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles", specifier = "~=24.1.0" },
-    { name = "anthraleia-pytgcalls", specifier = "~=1.0.3" },
+    { name = "anthraleia-pytgcalls", specifier = "~=1.0.11" },
     { name = "black", marker = "extra == 'dev'" },
     { name = "cachetools", specifier = "~=6.1.0" },
     { name = "httpx", specifier = "~=0.28.1" },
