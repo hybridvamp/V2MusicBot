@@ -487,7 +487,7 @@ async def search_and_download(keyword: str, vid_id=False, output_dir="/app/datab
             subprocess.run([
                 "ffmpeg", "-y",
                 "-i", primary_url,
-                "-c", "copy",
+                "-c", "copy", "-f", "mp4",
                 output_path
             ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 

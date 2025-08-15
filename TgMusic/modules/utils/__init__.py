@@ -26,24 +26,42 @@ def sec_to_min(seconds):
         return None
 
 
+import asyncio
+import json
+import logging
+
+LOGGER = logging.getLogger(__name__)
+
 async def get_audio_duration(file_path):
     try:
         proc = await asyncio.create_subprocess_exec(
             "ffprobe",
-            "-v",
-            "quiet",
-            "-print_format",
-            "json",
+            "-v", "quiet",
+            "-print_format", "json",
             "-show_format",
             "-show_streams",
             file_path,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, _ = await proc.communicate()
+        stdout, stderr = await proc.communicate()
+
+        if stderr:
+            LOGGER.warning("ffprobe stderr: %s", stderr.decode().strip())
+
+        if not stdout:
+            LOGGER.warning("ffprobe returned no output for %s", file_path)
+            return 0
+
         data = json.loads(stdout)
-        duration = float(data["format"]["duration"])
-        return int(duration)
+
+        if "format" in data and "duration" in data["format"]:
+            duration = float(data["format"]["duration"])
+            return int(duration)
+        else:
+            LOGGER.warning("No 'format.duration' found in ffprobe output for %s", file_path)
+            return 0
+
     except Exception as e:
         LOGGER.warning("Failed to get audio duration using ffprobe: %s", e)
         return 0
