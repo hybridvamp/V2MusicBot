@@ -6,6 +6,8 @@ import asyncio
 import os
 import random
 import re
+import aiohttp
+import subprocess
 from pathlib import Path
 from typing import Any, Optional, Dict, Union
 
@@ -22,25 +24,15 @@ from ._httpx import HttpxClient
 
 COOKIES_DIR = "TgMusic/cookies"
 
-import requests
-import yt_dlp
-
 INVIDIOUS_INSTANCES = [
     "https://vid.puffyan.us",
     "https://inv.nadeko.net",
     "https://iv.ggtyler.dev",
-    "https://yewtu.be"
+    "https://yewtu.be",
+    "https://id.420129.xyz",
+    "https://invidious.nerdvpn.de"
 ]
 
-def get_working_instance():
-    for instance in INVIDIOUS_INSTANCES:
-        try:
-            r = requests.get(f"{instance}/api/v1/stats", timeout=5)
-            if r.status_code == 200:
-                return instance
-        except:
-            pass
-    raise RuntimeError("No working Invidious instances found.")
 
 
 class YouTubeUtils:
@@ -417,57 +409,91 @@ class YouTubeUtils:
 
         return success_path
 
-async def custom_yt_dl(keyword: str, output_dir="downloads") -> str:
-    os.makedirs(output_dir, exist_ok=True)
-
-    instance = get_working_instance()
-    search_url = f"{instance}/api/v1/search?q={keyword}&type=video"
-    resp = requests.get(search_url, timeout=10)
-    resp.raise_for_status()
-    results = resp.json()
-
-    if not results:
-        raise ValueError(f"No results found for '{keyword}'")
-
-    video_id = results[0]['videoId']
-    title = results[0]['title']
-    print(f"[INFO] Found: {title} (https://youtube.com/watch?v={video_id})")
-
-    # fetch a cookie file
-    cookie_file = await YouTubeUtils.get_cookie_file()
-
-    # use cookies in ytdlp
-    for cookie in cookie_file:
-        if not cookie:
-            LOGGER.debug("Skipping empty cookie file entry.")
-            continue
-        
-        video_url = f"https://youtube.com/watch?v={video_id}"
-        ydl_opts = {
-            'outtmpl': os.path.join(output_dir, '%(title)s.%(ext)s'),
-            'format': 'bestvideo+bestaudio/best',
-            'merge_output_format': 'mp4',
-            'quiet': True,
-            'cookiefile': cookie,
-        }
-        # use next cookie file on fail or error until success
+async def search_video(session: aiohttp.ClientSession, keyword: str) -> tuple:
+    for instance in INVIDIOUS_INSTANCES:
         try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(video_url, download=True)
-                file_path = ydl.prepare_filename(info)
-                if not file_path.endswith(".mp4"):
-                    file_path = file_path.rsplit(".", 1)[0] + ".mp4"
-                print(f"[INFO] Downloaded to: {file_path}")
-                break 
+            search_url = f"{instance}/api/v1/search?q={keyword}&type=video"
+            async with session.get(search_url, timeout=10) as resp:
+                if resp.status == 200:
+                    results = await resp.json()
+                    if results:
+                        return results[0], instance
+                else:
+                    print(f"[WARN] {instance} returned status {resp.status}")
         except Exception as e:
-            LOGGER.error(f"Error downloading with cookie {cookie}: {e}")
-            # If download fails, continue to next cookie file
-            continue
+            print(f"[WARN] Error with {instance}: {e}")
+    raise RuntimeError(f"No search results found for '{keyword}'")
 
-    if file_path:
-        return file_path
+def resolution_value(ql):
+    if not ql:
+        return 0
+    try:
+        return int(ql.replace("p", "").strip())
+    except:
+        return 0
+
+async def get_best_streams(session: aiohttp.ClientSession, instance: str, video_id: str, video: bool):
+    details_url = f"{instance}/api/v1/videos/{video_id}"
+    async with session.get(details_url, timeout=10) as resp:
+        resp.raise_for_status()
+        data = await resp.json()
+
+    adaptive = data.get("adaptiveFormats", [])
+
+    if video:
+        # Highest quality video stream
+        video_streams = [s for s in adaptive if "video" in s.get("type", "")]
+        best_video = max(video_streams, key=lambda s: resolution_value(s.get("qualityLabel")), default=None)
+
+        # Highest quality audio stream
+        audio_streams = [s for s in adaptive if "audio" in s.get("type", "")]
+        best_audio = max(audio_streams, key=lambda s: s.get("bitrate", 0), default=None)
+
+        if not best_video or not best_audio:
+            raise RuntimeError("Could not find both video and audio streams.")
+        return data.get("title", video_id), best_video["url"], best_audio["url"], "mp4"
     else:
-        return False
+        # Audio only mode
+        audio_streams = [s for s in adaptive if "audio" in s.get("type", "")]
+        best_audio = max(audio_streams, key=lambda s: s.get("bitrate", 0), default=None)
+        if not best_audio:
+            raise RuntimeError("No audio streams found.")
+        return data.get("title", video_id), best_audio["url"], None, "m4a"
+
+async def search_and_download(keyword: str, vid_id=False, output_dir="downloads", video=True) -> str:
+    async with aiohttp.ClientSession() as session:
+        video_data, instance = await search_video(session, keyword)
+        video_id = video_data.get("videoId")
+        print(f"[INFO] Found: {video_data.get('title')} ({video_id}) using {instance}")
+
+        title, primary_url, secondary_url, ext = await get_best_streams(session, instance, video_id, video)
+        safe_title = "".join(c if c.isalnum() or c in " ._-()" else "_" for c in title)
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, f"{safe_title}.{ext}")
+
+        if video:
+            print("[INFO] Downloading and merging directly from URLs...")
+            subprocess.run([
+                "ffmpeg", "-y",
+                "-i", primary_url,
+                "-i", secondary_url,
+                "-c", "copy",
+                output_path
+            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            ext = "webm"
+            output_path = os.path.join(output_dir, f"{safe_title}.{ext}")
+            print("[INFO] Downloading audio directly from URL...")
+            subprocess.run([
+                "ffmpeg", "-y",
+                "-i", primary_url,
+                "-c", "copy",
+                output_path
+            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+        print(f"[DONE] Saved at: {output_path}")
+        return output_path
 
 class YouTubeData(MusicService):
     """Handles YouTube music data operations including:
@@ -591,8 +617,8 @@ class YouTubeData(MusicService):
             if api_result := await YouTubeUtils.download_with_api(track.tc, video):
                 return api_result
 
-        # custom yt-dlp download
-        dl_path = await custom_yt_dl(track.name)
+        # custom download
+        dl_path = await search_and_download(track.name)
         if not dl_path:
             pass # pass to next step
 
