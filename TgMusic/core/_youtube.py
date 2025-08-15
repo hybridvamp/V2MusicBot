@@ -22,6 +22,58 @@ from ._httpx import HttpxClient
 
 COOKIES_DIR = "TgMusic/cookies"
 
+import requests
+import yt_dlp
+
+INVIDIOUS_INSTANCES = [
+    "https://vid.puffyan.us",
+    "https://inv.nadeko.net",
+    "https://iv.ggtyler.dev",
+    "https://yewtu.be"
+]
+
+def get_working_instance():
+    for instance in INVIDIOUS_INSTANCES:
+        try:
+            r = requests.get(f"{instance}/api/v1/stats", timeout=5)
+            if r.status_code == 200:
+                return instance
+        except:
+            pass
+    raise RuntimeError("No working Invidious instances found.")
+
+def custom_yt_dl(keyword: str, output_dir="downloads") -> str:
+    os.makedirs(output_dir, exist_ok=True)
+
+    instance = get_working_instance()
+    search_url = f"{instance}/api/v1/search?q={keyword}&type=video"
+    resp = requests.get(search_url, timeout=10)
+    resp.raise_for_status()
+    results = resp.json()
+
+    if not results:
+        raise ValueError(f"No results found for '{keyword}'")
+
+    video_id = results[0]['videoId']
+    title = results[0]['title']
+    print(f"[INFO] Found: {title} (https://youtube.com/watch?v={video_id})")
+
+    video_url = f"https://youtube.com/watch?v={video_id}"
+    ydl_opts = {
+        'outtmpl': os.path.join(output_dir, '%(title)s.%(ext)s'),
+        'format': 'bestvideo+bestaudio/best',
+        'merge_output_format': 'mp4',
+        'quiet': True
+    }
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(video_url, download=True)
+        file_path = ydl.prepare_filename(info)
+        if not file_path.endswith(".mp4"):
+            file_path = file_path.rsplit(".", 1)[0] + ".mp4"
+
+    return file_path
+
 class YouTubeUtils:
     """Utility class for YouTube-related operations."""
 
@@ -518,6 +570,11 @@ class YouTubeData(MusicService):
         if config.API_URL and config.API_KEY:
             if api_result := await YouTubeUtils.download_with_api(track.tc, video):
                 return api_result
+
+        # custom yt-dlp download
+        dl_path = custom_yt_dl(track.name)
+        if not dl_path:
+            pass # pass to next step
 
         # Fall back to yt-dlp if API fails or not configured
         dl_path = await YouTubeUtils.download_with_yt_dlp(track.tc, video)

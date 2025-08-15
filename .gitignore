@@ -10,3 +10,6 @@ backups/*.tar.gz
 .venv
 pyproject.toml
 logs/
+ytdata.*
+yl.py
+/downloads
