@@ -461,6 +461,27 @@ async def get_best_streams(session: aiohttp.ClientSession, instance: str, video_
             raise RuntimeError("No audio streams found.")
         return data.get("title", video_id), best_audio["url"], None, "m4a"
 
+async def download_stream(url: str, output_path: str):
+    """Download a single stream (video or audio) with proper headers."""
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        ),
+        "Referer": "https://www.youtube.com/",
+        "Accept": "*/*",
+        "Accept-Language": "en-US,en;q=0.9"
+    }
+    async with aiohttp.ClientSession(headers=headers) as session:
+        async with session.get(url) as resp:
+            if resp.status != 200:
+                raise Exception(f"Failed to download stream: HTTP {resp.status}")
+            with open(output_path, "wb") as f:
+                async for chunk in resp.content.iter_chunked(8192):
+                    f.write(chunk)
+
+
 async def search_and_download(keyword: str, vid_id=False, output_dir="/app/database/music/", video=True) -> str:
     async with aiohttp.ClientSession() as session:
         video_data, instance = await search_video(session, keyword)
@@ -472,37 +493,41 @@ async def search_and_download(keyword: str, vid_id=False, output_dir="/app/datab
         os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(output_dir, f"{safe_title}.{ext}")
 
-        # Headers to bypass 403
-        headers = (
-            "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/120.0.0.0 Safari/537.36\r\n"
-            "Referer: https://www.youtube.com/\r\n"
-            "Accept: */*\r\n"
-        )
+        # Temp directory for parts
+        temp_dir = Path(output_dir) / "tmp"
+        temp_dir.mkdir(parents=True, exist_ok=True)
 
-        if video:
-            print("[INFO] Downloading highest quality video + audio...")
+        primary_file = temp_dir / f"{safe_title}_video.{primary_url.split('mime=')[1].split('/')[1].split('&')[0]}" if video else temp_dir / f"{safe_title}_audio.{ext}"
+        secondary_file = temp_dir / f"{safe_title}_audio.{secondary_url.split('mime=')[1].split('/')[1].split('&')[0]}" if video else None
+
+        print("[INFO] Downloading streams...")
+        await download_stream(primary_url, str(primary_file))
+        if video and secondary_url:
+            await download_stream(secondary_url, str(secondary_file))
+
+        print("[INFO] Merging with ffmpeg...")
+        if video and secondary_url:
             subprocess.run([
                 "ffmpeg", "-y",
-                "-headers", headers, "-i", primary_url,
-                "-headers", headers, "-i", secondary_url,
+                "-i", str(primary_file),
+                "-i", str(secondary_file),
                 "-c", "copy",
                 "-movflags", "+faststart",
                 output_path
-            ])
+            ], check=True)
         else:
-            print("[INFO] Downloading highest quality audio as MP4...")
             subprocess.run([
                 "ffmpeg", "-y",
-                "-headers", headers, "-i", primary_url,
+                "-i", str(primary_file),
                 "-c", "copy",
                 "-movflags", "+faststart",
                 output_path
-            ])
+            ], check=True)
 
-        if not os.path.exists(output_path):
-            raise FileNotFoundError(f"Download failed for {keyword}")
+        # Cleanup
+        for f in [primary_file, secondary_file]:
+            if f and os.path.exists(f):
+                os.remove(f)
 
         print(f"[DONE] Saved at: {output_path}")
         return output_path
