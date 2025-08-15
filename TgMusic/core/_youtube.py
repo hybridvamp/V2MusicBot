@@ -450,14 +450,21 @@ def custom_yt_dl(keyword: str, output_dir="downloads") -> str:
             'quiet': True,
             'cookiefile': cookie,
         }
+        # use next cookie file on fail or error until success
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(video_url, download=True)
+                file_path = ydl.prepare_filename(info)
+                if not file_path.endswith(".mp4"):
+                    file_path = file_path.rsplit(".", 1)[0] + ".mp4"
+                print(f"[INFO] Downloaded to: {file_path}")
+                return file_path
+        except Exception as e:
+            LOGGER.error(f"Error downloading with cookie {cookie}: {e}")
+            # If download fails, continue to next cookie file
+            continue
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(video_url, download=True)
-        file_path = ydl.prepare_filename(info)
-        if not file_path.endswith(".mp4"):
-            file_path = file_path.rsplit(".", 1)[0] + ".mp4"
-
-    return file_path
+    return False
 
 class YouTubeData(MusicService):
     """Handles YouTube music data operations including:
