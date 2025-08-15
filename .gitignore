@@ -13,3 +13,4 @@ logs/
 ytdata.*
 yl.py
 /downloads
+/venv

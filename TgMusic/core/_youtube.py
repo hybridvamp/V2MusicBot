@@ -618,7 +618,7 @@ class YouTubeData(MusicService):
                 return api_result
 
         # custom download
-        dl_path = await search_and_download(track.name)
+        dl_path = await search_and_download(track.tc)
         if not dl_path:
             pass # pass to next step
 
