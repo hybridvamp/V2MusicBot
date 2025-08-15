@@ -472,24 +472,24 @@ async def search_and_download(keyword: str, vid_id=False, output_dir="/app/datab
         output_path = os.path.join(output_dir, f"{safe_title}.{ext}")
 
         if video:
-            print("[INFO] Downloading and merging directly from URLs...")
+            print("[INFO] Downloading highest quality video + audio...")
             subprocess.run([
                 "ffmpeg", "-y",
                 "-i", primary_url,
                 "-i", secondary_url,
                 "-c", "copy",
+                "-movflags", "+faststart",
                 output_path
-            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            ])
         else:
-            ext = "webm"
-            output_path = os.path.join(output_dir, f"{safe_title}.{ext}")
-            print("[INFO] Downloading audio directly from URL...")
+            print("[INFO] Downloading highest quality audio as MP4...")
             subprocess.run([
                 "ffmpeg", "-y",
                 "-i", primary_url,
-                "-c", "copy", "-f", "mp4",
+                "-c", "copy",
+                "-movflags", "+faststart",
                 output_path
-            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            ])
 
 
         print(f"[DONE] Saved at: {output_path}")
