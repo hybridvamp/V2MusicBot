@@ -458,13 +458,16 @@ async def custom_yt_dl(keyword: str, output_dir="downloads") -> str:
                 if not file_path.endswith(".mp4"):
                     file_path = file_path.rsplit(".", 1)[0] + ".mp4"
                 print(f"[INFO] Downloaded to: {file_path}")
-                return file_path
+                break 
         except Exception as e:
             LOGGER.error(f"Error downloading with cookie {cookie}: {e}")
             # If download fails, continue to next cookie file
             continue
 
-    return False
+    if file_path:
+        return file_path
+    else:
+        return False
 
 class YouTubeData(MusicService):
     """Handles YouTube music data operations including:
