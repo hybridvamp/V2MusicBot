@@ -492,58 +492,77 @@ async def download_stream(url: str, output_path: str):
                 async for chunk in resp.content.iter_chunked(8192):
                     f.write(chunk)
 
+async def safe_download_stream(session, url, output_path, retries=2):
+    """Download stream with retry on HTTP 403."""
+    for attempt in range(retries):
+        try:
+            await download_stream(url, output_path)
+            return
+        except Exception as e:
+            if "HTTP 403" in str(e):
+                print(f"[WARN] 403 Forbidden, retrying ({attempt + 1}/{retries})...")
+                await asyncio.sleep(1)
+            else:
+                raise
+    raise RuntimeError(f"Failed to download stream after {retries} retries: {url}")
+
+
 async def search_and_download(keyword: str, vid_id=False, output_dir="/app/database/music/", video=True) -> str:
+    os.makedirs(output_dir, exist_ok=True)
+    temp_dir = Path(output_dir) / "tmp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+
     async with aiohttp.ClientSession() as session:
-        video_data, instance = await search_video(session, keyword)
-        video_id = video_data.get("videoId")
-        print(f"[INFO] Found: {video_data.get('title')} ({video_id}) using {instance}")
+        for instance in INVIDIOUS_INSTANCES:
+            try:
+                video_data, _ = await search_video(session, keyword)
+                video_id = video_data.get("videoId")
+                title, primary_url, secondary_url, ext = await get_best_streams(session, instance, video_id, video)
+                safe_title = video_id
+                output_path = os.path.join(output_dir, f"{safe_title}.{ext}")
 
-        title, primary_url, secondary_url, ext = await get_best_streams(session, instance, video_id, video)
-        safe_title = video_id
-        os.makedirs(output_dir, exist_ok=True)
-        output_path = os.path.join(output_dir, f"{safe_title}.{ext}")
+                primary_ext = get_ext_from_url(primary_url, default=ext)
+                secondary_ext = get_ext_from_url(secondary_url, default="webm") if video else None
 
-        # Temp directory for parts
-        temp_dir = Path(output_dir) / "tmp"
-        temp_dir.mkdir(parents=True, exist_ok=True)
+                primary_file = temp_dir / f"{safe_title}_video.{primary_ext}" if video else temp_dir / f"{safe_title}_audio.{primary_ext}"
+                secondary_file = temp_dir / f"{safe_title}_audio.{secondary_ext}" if video and secondary_url else None
 
-        primary_ext = get_ext_from_url(primary_url, default=ext)
-        secondary_ext = get_ext_from_url(secondary_url, default="webm") if video else None
+                print(f"[INFO] Downloading streams from {instance}...")
+                await safe_download_stream(session, primary_url, str(primary_file))
+                if video and secondary_url:
+                    await safe_download_stream(session, secondary_url, str(secondary_file))
 
-        primary_file = temp_dir / f"{safe_title}_video.{primary_ext}" if video else temp_dir / f"{safe_title}_audio.{primary_ext}"
-        secondary_file = temp_dir / f"{safe_title}_audio.{secondary_ext}" if video and secondary_url else None
+                print("[INFO] Merging with ffmpeg...")
+                if video and secondary_url:
+                    subprocess.run([
+                        "ffmpeg", "-y",
+                        "-i", str(primary_file),
+                        "-i", str(secondary_file),
+                        "-c", "copy",
+                        "-movflags", "+faststart",
+                        output_path
+                    ], check=True)
+                else:
+                    subprocess.run([
+                        "ffmpeg", "-y",
+                        "-i", str(primary_file),
+                        "-vn",
+                        "-c:a", "aac",
+                        "-b:a", "192k",
+                        "-movflags", "+faststart",
+                        output_path
+                    ], check=True)
 
-        print("[INFO] Downloading streams...")
-        await download_stream(primary_url, str(primary_file))
-        if video and secondary_url:
-            await download_stream(secondary_url, str(secondary_file))
+                # Cleanup
+                for f in [primary_file, secondary_file]:
+                    if f and f.exists():
+                        f.unlink()
 
-        print("[INFO] Merging with ffmpeg...")
-        if video and secondary_url:
-            subprocess.run([
-                "ffmpeg", "-y",
-                "-i", str(primary_file),
-                "-i", str(secondary_file),
-                "-c", "copy",
-                "-movflags", "+faststart",
-                output_path
-            ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        else:
-            subprocess.run([
-                "ffmpeg", "-y",
-                "-i", str(primary_file),
-                "-c", "copy",
-                "-movflags", "+faststart",
-                output_path
-            ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-        # Cleanup
-        for f in [primary_file, secondary_file]:
-            if f and os.path.exists(f):
-                os.remove(f)
-
-        print(f"[DONE] Saved at: {output_path}")
-        return output_path
+                print(f"[DONE] Saved at: {output_path}")
+                return output_path
+            except Exception as e:
+                print(f"[WARN] Instance {instance} failed: {e}, trying next...")
+        raise RuntimeError(f"All Invidious instances failed for '{keyword}'")
 
 class YouTubeData(MusicService):
     """Handles YouTube music data operations including:
