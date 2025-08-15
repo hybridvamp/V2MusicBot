@@ -42,37 +42,6 @@ def get_working_instance():
             pass
     raise RuntimeError("No working Invidious instances found.")
 
-def custom_yt_dl(keyword: str, output_dir="downloads") -> str:
-    os.makedirs(output_dir, exist_ok=True)
-
-    instance = get_working_instance()
-    search_url = f"{instance}/api/v1/search?q={keyword}&type=video"
-    resp = requests.get(search_url, timeout=10)
-    resp.raise_for_status()
-    results = resp.json()
-
-    if not results:
-        raise ValueError(f"No results found for '{keyword}'")
-
-    video_id = results[0]['videoId']
-    title = results[0]['title']
-    print(f"[INFO] Found: {title} (https://youtube.com/watch?v={video_id})")
-
-    video_url = f"https://youtube.com/watch?v={video_id}"
-    ydl_opts = {
-        'outtmpl': os.path.join(output_dir, '%(title)s.%(ext)s'),
-        'format': 'bestvideo+bestaudio/best',
-        'merge_output_format': 'mp4',
-        'quiet': True
-    }
-
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(video_url, download=True)
-        file_path = ydl.prepare_filename(info)
-        if not file_path.endswith(".mp4"):
-            file_path = file_path.rsplit(".", 1)[0] + ".mp4"
-
-    return file_path
 
 class YouTubeUtils:
     """Utility class for YouTube-related operations."""
@@ -448,6 +417,47 @@ class YouTubeUtils:
 
         return success_path
 
+def custom_yt_dl(keyword: str, output_dir="downloads") -> str:
+    os.makedirs(output_dir, exist_ok=True)
+
+    instance = get_working_instance()
+    search_url = f"{instance}/api/v1/search?q={keyword}&type=video"
+    resp = requests.get(search_url, timeout=10)
+    resp.raise_for_status()
+    results = resp.json()
+
+    if not results:
+        raise ValueError(f"No results found for '{keyword}'")
+
+    video_id = results[0]['videoId']
+    title = results[0]['title']
+    print(f"[INFO] Found: {title} (https://youtube.com/watch?v={video_id})")
+
+    # fetch a cookie file
+    cookie_file = YouTubeUtils.get_cookie_file()
+
+    # use cookies in ytdlp
+    for cookie in cookie_file:
+        if not cookie:
+            LOGGER.debug("Skipping empty cookie file entry.")
+            continue
+        
+        video_url = f"https://youtube.com/watch?v={video_id}"
+        ydl_opts = {
+            'outtmpl': os.path.join(output_dir, '%(title)s.%(ext)s'),
+            'format': 'bestvideo+bestaudio/best',
+            'merge_output_format': 'mp4',
+            'quiet': True,
+            'cookiefile': cookie,
+        }
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(video_url, download=True)
+        file_path = ydl.prepare_filename(info)
+        if not file_path.endswith(".mp4"):
+            file_path = file_path.rsplit(".", 1)[0] + ".mp4"
+
+    return file_path
 
 class YouTubeData(MusicService):
     """Handles YouTube music data operations including:
