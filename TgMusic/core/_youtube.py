@@ -10,6 +10,7 @@ import aiohttp
 import subprocess
 from pathlib import Path
 from typing import Any, Optional, Dict, Union
+from urllib.parse import urlparse
 
 from py_yt import Playlist, VideosSearch
 from pytdbot import types
@@ -471,12 +472,21 @@ async def search_and_download(keyword: str, vid_id=False, output_dir="/app/datab
         os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(output_dir, f"{safe_title}.{ext}")
 
+        # Headers to bypass 403
+        headers = (
+            "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36\r\n"
+            "Referer: https://www.youtube.com/\r\n"
+            "Accept: */*\r\n"
+        )
+
         if video:
             print("[INFO] Downloading highest quality video + audio...")
             subprocess.run([
                 "ffmpeg", "-y",
-                "-i", primary_url,
-                "-i", secondary_url,
+                "-headers", headers, "-i", primary_url,
+                "-headers", headers, "-i", secondary_url,
                 "-c", "copy",
                 "-movflags", "+faststart",
                 output_path
@@ -485,12 +495,14 @@ async def search_and_download(keyword: str, vid_id=False, output_dir="/app/datab
             print("[INFO] Downloading highest quality audio as MP4...")
             subprocess.run([
                 "ffmpeg", "-y",
-                "-i", primary_url,
+                "-headers", headers, "-i", primary_url,
                 "-c", "copy",
                 "-movflags", "+faststart",
                 output_path
             ])
 
+        if not os.path.exists(output_path):
+            raise FileNotFoundError(f"Download failed for {keyword}")
 
         print(f"[DONE] Saved at: {output_path}")
         return output_path
