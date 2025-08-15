@@ -467,7 +467,7 @@ async def search_and_download(keyword: str, vid_id=False, output_dir="/app/datab
         print(f"[INFO] Found: {video_data.get('title')} ({video_id}) using {instance}")
 
         title, primary_url, secondary_url, ext = await get_best_streams(session, instance, video_id, video)
-        safe_title = "".join(c if c.isalnum() or c in " ._-()" else "_" for c in title)
+        safe_title = video_id
         os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(output_dir, f"{safe_title}.{ext}")
 
@@ -622,6 +622,7 @@ class YouTubeData(MusicService):
             dl_path = await search_and_download(track.tc, video=video)
             if not dl_path:
                 pass
+            return dl_path
         except Exception as e:
             print(e)
             pass
