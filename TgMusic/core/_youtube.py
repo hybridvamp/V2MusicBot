@@ -527,7 +527,7 @@ async def search_and_download(keyword: str, vid_id=False, output_dir="/app/datab
                 "-c", "copy",
                 "-movflags", "+faststart",
                 output_path
-            ], check=True)
+            ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
             subprocess.run([
                 "ffmpeg", "-y",
@@ -535,7 +535,7 @@ async def search_and_download(keyword: str, vid_id=False, output_dir="/app/datab
                 "-c", "copy",
                 "-movflags", "+faststart",
                 output_path
-            ], check=True)
+            ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         # Cleanup
         for f in [primary_file, secondary_file]:
