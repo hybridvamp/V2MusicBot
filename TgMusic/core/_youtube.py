@@ -460,7 +460,7 @@ async def get_best_streams(session: aiohttp.ClientSession, instance: str, video_
             raise RuntimeError("No audio streams found.")
         return data.get("title", video_id), best_audio["url"], None, "m4a"
 
-async def search_and_download(keyword: str, vid_id=False, output_dir="downloads", video=True) -> str:
+async def search_and_download(keyword: str, vid_id=False, output_dir="/app/database/music/", video=True) -> str:
     async with aiohttp.ClientSession() as session:
         video_data, instance = await search_video(session, keyword)
         video_id = video_data.get("videoId")
@@ -618,9 +618,13 @@ class YouTubeData(MusicService):
                 return api_result
 
         # custom download
-        dl_path = await search_and_download(track.tc)
-        if not dl_path:
-            pass # pass to next step
+        try:
+            dl_path = await search_and_download(track.tc, video=video)
+            if not dl_path:
+                pass
+        except Exception as e:
+            print(e)
+            pass
 
         # Fall back to yt-dlp if API fails or not configured
         dl_path = await YouTubeUtils.download_with_yt_dlp(track.tc, video)
