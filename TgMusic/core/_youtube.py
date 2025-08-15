@@ -10,7 +10,7 @@ import aiohttp
 import subprocess
 from pathlib import Path
 from typing import Any, Optional, Dict, Union
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 from py_yt import Playlist, VideosSearch
 from pytdbot import types
@@ -33,7 +33,6 @@ INVIDIOUS_INSTANCES = [
     "https://id.420129.xyz",
     "https://invidious.nerdvpn.de"
 ]
-
 
 
 class YouTubeUtils:
@@ -461,6 +460,18 @@ async def get_best_streams(session: aiohttp.ClientSession, instance: str, video_
             raise RuntimeError("No audio streams found.")
         return data.get("title", video_id), best_audio["url"], None, "m4a"
 
+def get_ext_from_url(url: str, default: str = "webm") -> str:
+    """Extract file extension from YouTube stream URL, fallback to default."""
+    try:
+        qs = parse_qs(urlparse(url).query)
+        if "mime" in qs:
+            mime = qs["mime"][0]  # e.g., 'audio/webm'
+            ext = mime.split("/")[1]
+            return ext
+    except Exception:
+        pass
+    return default
+
 async def download_stream(url: str, output_path: str):
     """Download a single stream (video or audio) with proper headers."""
     headers = {
@@ -481,7 +492,6 @@ async def download_stream(url: str, output_path: str):
                 async for chunk in resp.content.iter_chunked(8192):
                     f.write(chunk)
 
-
 async def search_and_download(keyword: str, vid_id=False, output_dir="/app/database/music/", video=True) -> str:
     async with aiohttp.ClientSession() as session:
         video_data, instance = await search_video(session, keyword)
@@ -497,8 +507,11 @@ async def search_and_download(keyword: str, vid_id=False, output_dir="/app/datab
         temp_dir = Path(output_dir) / "tmp"
         temp_dir.mkdir(parents=True, exist_ok=True)
 
-        primary_file = temp_dir / f"{safe_title}_video.{primary_url.split('mime=')[1].split('/')[1].split('&')[0]}" if video else temp_dir / f"{safe_title}_audio.{ext}"
-        secondary_file = temp_dir / f"{safe_title}_audio.{secondary_url.split('mime=')[1].split('/')[1].split('&')[0]}" if video else None
+        primary_ext = get_ext_from_url(primary_url, default=ext)
+        secondary_ext = get_ext_from_url(secondary_url, default="webm") if video else None
+
+        primary_file = temp_dir / f"{safe_title}_video.{primary_ext}" if video else temp_dir / f"{safe_title}_audio.{primary_ext}"
+        secondary_file = temp_dir / f"{safe_title}_audio.{secondary_ext}" if video and secondary_url else None
 
         print("[INFO] Downloading streams...")
         await download_stream(primary_url, str(primary_file))
