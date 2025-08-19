@@ -26,6 +26,7 @@ from ._httpx import HttpxClient
 COOKIES_DIR = "TgMusic/cookies"
 
 INVIDIOUS_INSTANCES = [
+    "http://yt.hybtids.xyz",
     "https://vid.puffyan.us",
     "https://inv.nadeko.net",
     "https://iv.ggtyler.dev",
