@@ -40,8 +40,18 @@ INVIDIOUS_INSTANCES = [
 swift = ProxyInterface(autoUpdate=False, autoRotate=True)
 
 def get_proxy():
-    """Return a proxy string (safe to call inside Telethon handlers)"""
-    return swift.get().as_string()
+    loop = asyncio.get_event_loop()
+    if loop.is_running():
+        # We are already inside an event loop → use run_until_complete safely
+        coro = swift.async_update()
+        fut = asyncio.ensure_future(coro)
+        loop.run_until_complete(fut)
+    else:
+        loop.run_until_complete(swift.async_update())
+
+    proxy = swift.get().as_string()
+    return proxy
+
 
 class YouTubeUtils:
     """Utility class for YouTube-related operations."""

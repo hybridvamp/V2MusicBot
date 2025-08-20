@@ -79,9 +79,9 @@ class Bot(Client):
             self.logger.info(f"Auto leave enabled: {self.config.AUTO_LEAVE}")
             self.logger.info("=" * 60)
             self.logger.info("=" * 60)
-            self.logger.info("Starting proxy updater")
-            asyncio.create_task(proxy_updater())
-            self.logger.info("Proxy updater Started******")
+            # self.logger.info("Starting proxy updater")
+            # asyncio.create_task(proxy_updater())
+            # self.logger.info("Proxy updater Started******")
             
         except Exception as e:
             self.logger.critical(f"Failed to start bot: {e}", exc_info=True)
