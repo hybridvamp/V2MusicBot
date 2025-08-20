@@ -37,7 +37,7 @@ INVIDIOUS_INSTANCES = [
     "https://invidious.nerdvpn.de"
 ]
 
-swift = ProxyInterface(protocol="https", autoUpdate=False, autoRotate=True)
+swift = ProxyInterface(protocol="https", autoUpdate=True, autoRotate=True)
 
 async def _get_proxy_async():
     await swift.async_update()
