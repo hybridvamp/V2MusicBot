@@ -14,7 +14,19 @@ StartTime = datetime.now()
 
 
 from TgMusic.core import call, tg, db, config
+from swiftshadow.classes import ProxyInterface
 
+swift = ProxyInterface(autoUpdate=False, autoRotate=True)
+
+async def proxy_updater():
+    """Keep proxies fresh in the background"""
+    client.logger.info("Starting Proxy Updater *******************")
+    while True:
+        try:
+            await swift.async_update()
+        except Exception as e:
+            print(f"Proxy update failed: {e}")
+        await asyncio.sleep(10)  # update every 10s (tweak as needed)
 
 class Bot(Client):
     """Main bot class handling initialization and lifecycle management."""
@@ -66,6 +78,10 @@ class Bot(Client):
             self.logger.info(f"Default service: {self.config.DEFAULT_SERVICE}")
             self.logger.info(f"Auto leave enabled: {self.config.AUTO_LEAVE}")
             self.logger.info("=" * 60)
+            self.logger.info("=" * 60)
+            self.logger.info("Starting proxy updater")
+            asyncio.create_task(proxy_updater())
+            self.logger.info("Proxy updater Started******")
             
         except Exception as e:
             self.logger.critical(f"Failed to start bot: {e}", exc_info=True)
