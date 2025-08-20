@@ -40,7 +40,6 @@ INVIDIOUS_INSTANCES = [
 swift = ProxyInterface(protocol="https", autoUpdate=False, autoRotate=True)
 
 async def _get_proxy_async():
-    # Refresh proxies safely inside event loop
     await swift.async_update()
     proxy = swift.get().as_string()
     LOGGER.info(f"Proxy found: {proxy}")
@@ -48,14 +47,11 @@ async def _get_proxy_async():
 
 def get_proxy():
     try:
-        # If there’s already a running event loop, schedule the coroutine
         loop = asyncio.get_running_loop()
     except RuntimeError:
-        # No event loop → normal blocking run
         return asyncio.run(_get_proxy_async())
     else:
-        # Inside a running loop → run coroutine in that loop
-        return loop.run_until_complete(_get_proxy_async())
+        return asyncio.ensure_future(_get_proxy_async())
 
 class YouTubeUtils:
     """Utility class for YouTube-related operations."""
