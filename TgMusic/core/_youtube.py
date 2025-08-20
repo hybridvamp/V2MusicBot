@@ -41,7 +41,7 @@ swift = ProxyInterface(autoUpdate=False, autoRotate=True)
 
 def get_proxy():
     """Return a proxy string (safe to call inside Telethon handlers)"""
-    return swift.get().as_string() if swift.cache else None
+    return swift.get().as_string()
 
 class YouTubeUtils:
     """Utility class for YouTube-related operations."""
