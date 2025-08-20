@@ -37,11 +37,11 @@ INVIDIOUS_INSTANCES = [
     "https://invidious.nerdvpn.de"
 ]
 
+swift = ProxyInterface(autoUpdate=False, autoRotate=True)
+
 def get_proxy():
-    swift = ProxyInterface(protocol="https", autoRotate=True)
-    proxy = swift.get().as_string()
-    LOGGER.info(f"Proxy found: {proxy}")
-    return proxy
+    """Return a proxy string (safe to call inside Telethon handlers)"""
+    return swift.get().as_string() if swift.cache else None
 
 class YouTubeUtils:
     """Utility class for YouTube-related operations."""

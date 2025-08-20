@@ -8,7 +8,20 @@ import signal
 import sys
 from TgMusic import client
 from TgMusic.core import db
+import asyncio
+from swiftshadow.classes import ProxyInterface
 
+swift = ProxyInterface(autoUpdate=False, autoRotate=True)
+
+async def proxy_updater():
+    """Keep proxies fresh in the background"""
+    client.logger.info("Starting Proxy Updater *******************")
+    while True:
+        try:
+            await swift.async_update()
+        except Exception as e:
+            print(f"Proxy update failed: {e}")
+        await asyncio.sleep(10)  # update every 10s (tweak as needed)
 
 def signal_handler(signum, frame):
     """Handle shutdown signals gracefully."""
@@ -47,6 +60,7 @@ def main() -> None:
     signal.signal(signal.SIGTERM, signal_handler)  # Termination signal
     
     client.logger.info("Starting TgMusicBot...")
+    asyncio.create_task(proxy_updater())
     client.run()
 
 
