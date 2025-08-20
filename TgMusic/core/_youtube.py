@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Optional, Dict, Union
 from urllib.parse import urlparse, parse_qs
 from swiftshadow import QuickProxy
+from swiftshadow.classes import ProxyInterface
 
 from py_yt import Playlist, VideosSearch
 from pytdbot import types
@@ -37,7 +38,8 @@ INVIDIOUS_INSTANCES = [
 ]
 
 def get_proxy():
-    proxy = QuickProxy()
+    swift = ProxyInterface(protocol="https", autoRotate=True)
+    proxy = swift.get().as_string()
     LOGGER.info(f"Proxy found: {proxy}")
     return proxy
 
