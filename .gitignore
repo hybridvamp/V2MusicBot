@@ -12,6 +12,7 @@ pyproject.toml
 logs/
 ytdata.*
 yl.py
+yl2.py
 /downloads
 /venv
 config.yml

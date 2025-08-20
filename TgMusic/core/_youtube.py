@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Optional, Dict, Union
 from urllib.parse import urlparse, parse_qs
+from swiftshadow import QuickProxy
 
 from py_yt import Playlist, VideosSearch
 from pytdbot import types
@@ -35,6 +36,10 @@ INVIDIOUS_INSTANCES = [
     "https://invidious.nerdvpn.de"
 ]
 
+def get_proxy():
+    proxy = QuickProxy()
+    LOGGER.info(f"Proxy found: {proxy}")
+    return proxy
 
 class YouTubeUtils:
     """Utility class for YouTube-related operations."""
@@ -332,9 +337,16 @@ class YouTubeUtils:
         if video:
             ytdlp_params += ["--merge-output-format", "mp4"]
 
-        if config.PROXY:
-            ytdlp_params += ["--proxy", config.PROXY]
-        elif cookie_file:
+        # if config.PROXY:
+        #     ytdlp_params += ["--proxy", config.PROXY]
+        # elif cookie_file:
+        #     ytdlp_params += ["--cookies", cookie_file]
+
+        PR_OXY = get_proxy()
+        if PR_OXY:
+            ytdlp_params += ["--proxy", PR_OXY]
+
+        if cookie_file:
             ytdlp_params += ["--cookies", cookie_file]
 
         video_url = f"https://www.youtube.com/watch?v={video_id}"
@@ -506,7 +518,6 @@ async def safe_download_stream(session, url, output_path, retries=2):
             else:
                 raise
     raise RuntimeError(f"Failed to download stream after {retries} retries: {url}")
-
 
 async def search_and_download(keyword: str, vid_id=False, output_dir="/app/database/music/", video=True) -> str:
     os.makedirs(output_dir, exist_ok=True)
