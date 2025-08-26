@@ -426,7 +426,10 @@ class YouTubeUtils:
         # elif cookie_file:
         #     ytdlp_params += ["--cookies", cookie_file]
 
-        PR_OXY = get_single_proxy()
+        try:
+            PR_OXY = get_single_proxy()
+        except:
+            pass
         if PR_OXY:
             ytdlp_params += ["--proxy", PR_OXY]
 
