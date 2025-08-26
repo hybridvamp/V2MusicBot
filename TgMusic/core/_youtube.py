@@ -8,11 +8,10 @@ import random
 import re
 import aiohttp
 import subprocess
+import requests
 from pathlib import Path
-from typing import Any, Optional, Dict, Union
+from typing import Any, Optional, Dict, Union, List
 from urllib.parse import urlparse, parse_qs
-from swiftshadow import QuickProxy
-from swiftshadow.classes import ProxyInterface
 
 from py_yt import Playlist, VideosSearch
 from pytdbot import types
@@ -37,21 +36,53 @@ INVIDIOUS_INSTANCES = [
     "https://invidious.nerdvpn.de"
 ]
 
-swift = ProxyInterface(protocol="https", autoUpdate=True, autoRotate=True)
+PROXY_API = "https://free-coretta-hybridvamp-ab9b9ec6.koyeb.app/proxy"
 
-async def _get_proxy_async():
-    await swift.async_update()
-    proxy = swift.get().as_string()
-    LOGGER.info(f"Proxy found: {proxy}")
-    return proxy
+def get_proxies(
+    base_url: str = PROXY_API,
+    count: int = 1,
+    protocol: str = "https",
+    **kwargs
+) -> List[str]:
+    """
+    Fetches unique proxies from the given API endpoint.
 
-def get_proxy():
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(_get_proxy_async())
-    else:
-        return asyncio.ensure_future(_get_proxy_async())
+    Parameters:
+      - base_url (str): The API base URL, e.g., "https://...koyeb.app/proxy"
+      - count (int): Number of unique proxies you want.
+      - protocol (str): "http" or "https"
+      - kwargs: Optional query parameters (e.g., countries, auto_rotate, validate, cache_period)
+
+    Returns:
+      - List of unique proxy strings.
+
+    Raises:
+      - Exception for HTTP errors or insufficient proxies returned.
+    """
+    params = {"count": count, "protocol": protocol}
+    params.update(kwargs)
+
+    response = requests.get(base_url, params=params)
+    response.raise_for_status()  # Raises error for HTTP >=400
+
+    data = response.json()
+    if not isinstance(data, list):
+        raise ValueError("API returned unexpected response format, expected a list")
+
+    proxies = []
+    seen = set()
+    for item in data:
+        proxy_str = item.get("proxy_string")
+        if not proxy_str:
+            continue
+        if proxy_str not in seen:
+            seen.add(proxy_str)
+            proxies.append(proxy_str)
+
+    if len(proxies) < count:
+        raise ValueError(f"Expected {count} unique proxies, but got {len(proxies)}")
+
+    return proxies
 
 class YouTubeUtils:
     """Utility class for YouTube-related operations."""
@@ -354,7 +385,16 @@ class YouTubeUtils:
         # elif cookie_file:
         #     ytdlp_params += ["--cookies", cookie_file]
 
-        PR_OXY = get_proxy()
+        PR_OXIES = get_proxies(
+            base_url=PROXY_API,
+            count=1,
+            protocol="https",
+            countries=["IN"],
+            auto_rotate=True,
+            validate=True,
+            cache_period=30
+        )
+        PR_OXY = PR_OXIES[0]
         if PR_OXY:
             ytdlp_params += ["--proxy", PR_OXY]
 
