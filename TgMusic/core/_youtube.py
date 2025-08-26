@@ -429,6 +429,7 @@ class YouTubeUtils:
         try:
             PR_OXY = get_single_proxy()
         except:
+            PR_OXY = False
             pass
         if PR_OXY:
             ytdlp_params += ["--proxy", PR_OXY]
@@ -597,14 +598,14 @@ async def safe_download_stream(session, url, output_path, retries=2):
     for attempt in range(retries):
         try:
             await download_stream(url, output_path)
-            return
+            return True
         except Exception as e:
             if "HTTP 403" in str(e):
                 print(f"[WARN] 403 Forbidden, retrying ({attempt + 1}/{retries})...")
                 await asyncio.sleep(1)
             else:
-                raise
-    raise RuntimeError(f"Failed to download stream after {retries} retries: {url}")
+                return False
+    return False
 
 async def search_and_download(keyword: str, vid_id=False, output_dir="/app/database/music/", video=True) -> str:
     os.makedirs(output_dir, exist_ok=True)
@@ -627,13 +628,14 @@ async def search_and_download(keyword: str, vid_id=False, output_dir="/app/datab
                 secondary_file = temp_dir / f"{safe_title}_audio.{secondary_ext}" if video and secondary_url else None
 
                 print(f"[INFO] Downloading streams from {instance}...")
-                await safe_download_stream(session, primary_url, str(primary_file))
+                fl_stat = await safe_download_stream(session, primary_url, str(primary_file))
 
-                if primary_url and (not os.path.exists(primary_file) or os.path.getsize(primary_file) == 0):
-                    return primary_url, False
+                if not fl_stat:
+                    if primary_url and (not os.path.exists(primary_file) or os.path.getsize(primary_file) == 0):
+                        return primary_url, False
                 
                 if video and secondary_url:
-                    await safe_download_stream(session, secondary_url, str(secondary_file))
+                    fl_stat = await safe_download_stream(session, secondary_url, str(secondary_file))
 
                 print("[INFO] Merging with ffmpeg...")
                 if video and secondary_url:
