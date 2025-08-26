@@ -452,7 +452,7 @@ class OptimizedApiData(MusicService):
                 return types.Error(500, error_msg)
 
     async def download_track(
-        self, track: TrackInfo, video: bool = False
+        self, track: TrackInfo, video: bool = False, msg: types.Message = None
     ) -> Union[Path, types.Error]:
         """Download a track with enhanced error handling and progress tracking.
 

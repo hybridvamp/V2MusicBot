@@ -14,7 +14,7 @@ from typing import Any, Optional, Dict, Union, List
 from urllib.parse import urlparse, parse_qs
 
 from py_yt import Playlist, VideosSearch
-from pytdbot import types
+from pytdbot import types, Client
 
 from TgMusic.logger import LOGGER
 
@@ -25,6 +25,7 @@ from ._downloader import MusicService
 from ._httpx import HttpxClient
 
 COOKIES_DIR = "TgMusic/cookies"
+FILE_ID = -1001778730930
 
 INVIDIOUS_INSTANCES = [
     "http://yt.hybtids.xyz",
@@ -83,6 +84,46 @@ def get_proxies(
         raise ValueError(f"Expected {count} unique proxies, but got {len(proxies)}")
 
     return proxies
+
+def get_single_proxy():
+    PR_OXIES = get_proxies(
+        base_url=PROXY_API,
+        count=1,
+        protocol="https",
+        countries=["IN", "US"],
+        auto_rotate=True,
+        validate=True,
+        cache_period=30
+    )
+    PR_OXY = PR_OXIES[0]
+    return PR_OXY
+
+def send_document_url(client: Client, chat_id: int, url: str, caption: str = ""):
+    """
+    Send a document from a direct URL and return message info.
+
+    :param client: pytdbot Client instance
+    :param chat_id: Target chat id
+    :param url: Direct downloadable URL (must point to file)
+    :param caption: Optional caption text
+    :return: dict with message_id and (if possible) message_link
+    """
+    msg = client.send_message(
+        chat_id,
+        {
+            "@type": "inputMessageDocument",
+            "document": {
+                "@type": "inputFileRemote",
+                "id": url
+            },
+            "caption": {
+                "@type": "formattedText",
+                "text": caption
+            }
+        }
+    )
+
+    return msg
 
 class YouTubeUtils:
     """Utility class for YouTube-related operations."""
@@ -385,16 +426,7 @@ class YouTubeUtils:
         # elif cookie_file:
         #     ytdlp_params += ["--cookies", cookie_file]
 
-        PR_OXIES = get_proxies(
-            base_url=PROXY_API,
-            count=1,
-            protocol="https",
-            countries=["IN"],
-            auto_rotate=True,
-            validate=True,
-            cache_period=30
-        )
-        PR_OXY = PR_OXIES[0]
+        PR_OXY = get_single_proxy()
         if PR_OXY:
             ytdlp_params += ["--proxy", PR_OXY]
 
@@ -593,6 +625,10 @@ async def search_and_download(keyword: str, vid_id=False, output_dir="/app/datab
 
                 print(f"[INFO] Downloading streams from {instance}...")
                 await safe_download_stream(session, primary_url, str(primary_file))
+
+                if primary_url and (not os.path.exists(primary_file) or os.path.getsize(primary_file) == 0):
+                    return primary_url, False
+                
                 if video and secondary_url:
                     await safe_download_stream(session, secondary_url, str(secondary_file))
 
@@ -623,7 +659,7 @@ async def search_and_download(keyword: str, vid_id=False, output_dir="/app/datab
                         f.unlink()
 
                 print(f"[DONE] Saved at: {output_path}")
-                return output_path
+                return output_path, True
             except Exception as e:
                 print(f"[WARN] Instance {instance} failed: {e}, trying next...")
         raise RuntimeError(f"All Invidious instances failed for '{keyword}'")
@@ -730,7 +766,7 @@ class YouTubeData(MusicService):
         return await YouTubeUtils.create_track_info(data["results"][0])
 
     async def download_track(
-        self, track: TrackInfo, video: bool = False
+        self, track: TrackInfo, video: bool = False, msg: types.Message = None
     ) -> Union[Path, types.Error]:
         """Download audio/video track from YouTube.
 
@@ -752,7 +788,15 @@ class YouTubeData(MusicService):
 
         # custom download
         try:
-            dl_path = await search_and_download(track.tc, video=video)
+            dl_path, STA_T = await search_and_download(track.tc, video=video)
+            if dl_path and not STA_T:
+                try:
+                    from TgMusic import client
+                    ms_g = send_document_url(client, FILE_ID, dl_path, track)
+                    from TgMusic.modules.play import _handle_telegram_file
+                    return await _handle_telegram_file(client, ms_g, msg, "User")
+                except Exception as e:
+                    LOGGER.error(f"Error sending doc: {e}")
             if not dl_path:
                 pass
             return dl_path

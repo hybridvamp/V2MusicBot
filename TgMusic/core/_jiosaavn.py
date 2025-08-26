@@ -232,7 +232,7 @@ class JiosaavnData(MusicService):
         return None
 
     async def download_track(
-        self, track: TrackInfo, video: bool = False
+        self, track: TrackInfo, video: bool = False, msg: types.Message = None
     ) -> Union[Path, types.Error]:
         """Download audio track from JioSaavn.
 

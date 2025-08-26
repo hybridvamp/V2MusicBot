@@ -26,7 +26,7 @@ class MusicService(ABC):
 
     @abstractmethod
     async def download_track(
-        self, track_info: TrackInfo, video: bool = False
+        self, track_info: TrackInfo, video: bool = False, msg: types.Message = None
     ) -> Union[Path, types.Error]: ...
 
 
@@ -70,6 +70,6 @@ class DownloaderWrapper(MusicService):
         return await self.service.get_track()
 
     async def download_track(
-        self, track_info: TrackInfo, video: bool = False
+        self, track_info: TrackInfo, video: bool = False, msg: types.Message = None
     ) -> Union[Path, types.Error]:
         return await self.service.download_track(track_info, video)

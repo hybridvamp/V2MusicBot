@@ -133,7 +133,7 @@ async def _handle_single_track(
 
     # Download track if not already cached
     if not song.file_path:
-        download_result = await call.song_download(song)
+        download_result = await call.song_download(song, msg)
         user_lang = await language_manager.get_language(msg.from_id, msg.chat_id)
         if isinstance(download_result, types.Error):
             return await edit_text(
@@ -303,7 +303,7 @@ async def _handle_telegram_file(
         tracks=[
             MusicTrack(
                 name=file_name,
-                artist="Ashok-Shau",
+                artist="@HybridUpdates",
                 id=reply.remote_unique_file_id,
                 year=0,
                 cover="",

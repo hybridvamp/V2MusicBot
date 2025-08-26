@@ -359,7 +359,7 @@ class Calls:
             )
 
     @staticmethod
-    async def song_download(song: CachedTrack) -> Union[Path, types.Error]:
+    async def song_download(song: CachedTrack, msg: types.Message) -> Union[Path, types.Error]:
         """Download a song from various platforms.
 
         Args:
@@ -383,7 +383,7 @@ class Calls:
             if isinstance(track_info, types.Error):
                 return track_info
 
-            return await wrapper.download_track(track_info, song.is_video)
+            return await wrapper.download_track(track_info, song.is_video, msg)
         return types.Error(
             code=400,
             message=f"Invalid URL: {song_url}",
