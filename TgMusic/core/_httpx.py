@@ -64,7 +64,11 @@ class HttpxClient:
     def _get_headers(url: str, base_headers: Dict[str, str]) -> Dict[str, str]:
         headers = base_headers.copy()
         if config.API_URL and url.startswith(config.API_URL):
-            headers["X-API-Key"] = config.API_KEY
+            for AP_I in config.API_KEY:
+                if AP_I in config.DIS_API:
+                    continue
+                headers["X-API-Key"] = AP_I
+                config.CURRENT_KEY = AP_I
         return headers
 
     @staticmethod

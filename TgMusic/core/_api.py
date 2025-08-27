@@ -341,7 +341,12 @@ class OptimizedApiData(MusicService):
         request_url = f"{self.api_url}/{endpoint.lstrip('/')}"
         
         # Add API key to headers
-        headers = {"X-API-Key": self.api_key}
+        for AP_I in self.api_key:
+            if AP_I in config.DIS_API:
+                continue
+            headers = {"X-API-Key": AP_I}
+            config.CURRENT_KEY = AP_I
+        # headers = {"X-API-Key": self.api_key}
         
         try:
             return await asyncio.wait_for(

@@ -33,7 +33,10 @@ class BotConfig:
         self.MONGO_URI: Optional[str] = os.getenv("MONGO_URI")
         self.DB_NAME: str = os.getenv("DB_NAME", "MusicBot")
         self.API_URL: str = os.getenv("API_URL", "https://tgmusic.fallenapi.fun")
-        self.API_KEY: Optional[str] = os.getenv("API_KEY")
+        api_keys = os.getenv("API_KEY", "")
+        self.API_KEY: Optional[list[str]] = api_keys.split() if api_keys else None
+        self.DIS_API: Optional[list] = []
+        self.CURRENT_KEY = None
 
         # Owner and Logger
         self.OWNER_ID: int = self._get_env_int("OWNER_ID", 5938660179)
