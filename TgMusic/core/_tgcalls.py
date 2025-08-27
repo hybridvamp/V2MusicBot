@@ -290,7 +290,7 @@ class Calls:
                 return
 
             # Download song if isn't downloaded
-            file_path = song.file_path or await self.song_download(song)
+            file_path = song.file_path or await self.song_download(song, msg=reply)
             if not file_path:
                 await reply.edit_text(
                     "⚠️ Failed to download the song.\n" "Skipping to next track..."
