@@ -111,7 +111,7 @@ def send_document_url(client: Client, chat_id: int, url: str, caption: str = "")
     :param caption: Optional caption text
     :return: dict with message_id and (if possible) message_link
     """
-    msg = client.send_message(
+    msg = client.sendMessage(
         chat_id,
         {
             "@type": "inputMessageDocument",
