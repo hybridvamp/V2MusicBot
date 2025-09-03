@@ -101,7 +101,7 @@ def get_single_proxy():
     PR_OXY = PR_OXIES[0]
     return PR_OXY
 
-def send_document_url(client: Client, chat_id: int, url: str, caption: str = ""):
+async def send_document_url(client: Client, chat_id: int, url: str, caption: str = ""):
     """
     Send a document from a direct URL and return message info.
 
@@ -111,7 +111,7 @@ def send_document_url(client: Client, chat_id: int, url: str, caption: str = "")
     :param caption: Optional caption text
     :return: dict with message_id and (if possible) message_link
     """
-    msg = client.sendMessage(
+    msg = await client.sendMessage(
         chat_id,
         {
             "@type": "inputMessageDocument",
@@ -937,7 +937,7 @@ class YouTubeData(MusicService):
             if dl_path and not STA_T:
                 try:
                     from TgMusic import client
-                    ms_g = send_document_url(client, FILE_ID, dl_path, track)
+                    ms_g = await send_document_url(client, FILE_ID, dl_path, track)
                     from TgMusic.modules.play import _handle_telegram_file
                     return await _handle_telegram_file(client, ms_g, msg, "User")
                 except Exception as e:
