@@ -905,7 +905,7 @@ class YouTubeData(MusicService):
                     # get message (FILE_URL is a message link) using client
                     FILE_ID = FILE_URL.split("/")[-1]
                     CHAT_ID = FILE_URL.split("/")[-2]
-                    chat_object = await client.getChat(CHAT_ID)
+                    chat_object = await client.searchPublicChat(CHAT_ID)
                     CHAT_ID = chat_object.id
                     ms_g = await client.getMessage(CHAT_ID, FILE_ID)
                     from TgMusic.modules.play import _handle_telegram_file
