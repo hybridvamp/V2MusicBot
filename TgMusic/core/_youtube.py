@@ -904,7 +904,7 @@ class YouTubeData(MusicService):
                     from TgMusic import client
                     # get message (FILE_URL is a message link) using client
                     FILE_ID = FILE_URL.split("/")[-1]
-                    CHAT_ID = int(FILE_URL.split("/")[-2])
+                    CHAT_ID = FILE_URL.split("/")[-2]
                     chat_object = await client.get_chat(CHAT_ID)
                     CHAT_ID = chat_object.id
                     ms_g = await client.getMessage(CHAT_ID, FILE_ID)
