@@ -60,7 +60,8 @@ async def get_audio_duration(file_path):
             return int(duration)
         else:
             LOGGER.warning("No 'format.duration' found in ffprobe output for %s", file_path)
-            return 0
+            #return a default value of 03:45
+            return 225
 
     except Exception as e:
         LOGGER.warning("Failed to get audio duration using ffprobe: %s", e)
