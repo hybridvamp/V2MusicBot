@@ -13,6 +13,8 @@ logs/
 ytdata.*
 yl.py
 yl2.py
+yl3.py
 /downloads
 /venv
 config.yml
+track_info.json

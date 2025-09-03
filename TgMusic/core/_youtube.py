@@ -6,6 +6,9 @@ import asyncio
 import os
 import random
 import re
+import json
+import time
+import sys
 import aiohttp
 import subprocess
 import requests
@@ -124,6 +127,107 @@ def send_document_url(client: Client, chat_id: int, url: str, caption: str = "")
     )
 
     return msg
+
+class FallenAPIClient:
+    def __init__(self, api_keys: List[str]):
+        """
+        Initialize the Fallen API client with multiple API keys for fallback
+        
+        Args:
+            api_keys: List of API keys to use (first one will be tried first)
+        """
+        self.api_keys = api_keys
+        self.current_key_index = 0
+        self.base_url = "https://tgmusic.fallenapi.fun"
+        
+    def _make_request(self, endpoint: str, params: Dict[str, Any]) -> Optional[Dict]:
+        """
+        Make API request with automatic key rotation on failure
+        
+        Args:
+            endpoint: API endpoint to call
+            params: Parameters for the request (excluding api_key)
+            
+        Returns:
+            Response JSON or None if all keys failed
+        """
+        for attempt in range(len(self.api_keys)):
+            current_key = self.api_keys[self.current_key_index]
+            
+            # Add API key to parameters
+            request_params = params.copy()
+            request_params['api_key'] = current_key
+            
+            try:
+                print(f"🔑 Trying API key #{self.current_key_index + 1}")
+                
+                response = requests.get(
+                    f"{self.base_url}/{endpoint}",
+                    params=request_params,
+                    timeout=30
+                )
+                
+                # Check if request was successful
+                if response.status_code == 200:
+                    print(f"✅ Success with API key #{self.current_key_index + 1}")
+                    return response.json()
+                    
+                elif response.status_code == 401:
+                    print(f"❌ API key #{self.current_key_index + 1} is invalid or expired")
+                    
+                elif response.status_code == 429:
+                    print(f"⚠️  Rate limit reached for API key #{self.current_key_index + 1}")
+                    
+                elif response.status_code == 403:
+                    print(f"❌ Access denied with API key #{self.current_key_index + 1}")
+                    
+                else:
+                    print(f"❌ HTTP {response.status_code} with API key #{self.current_key_index + 1}")
+                    print(f"Response: {response.text[:200]}...")
+                    
+            except requests.exceptions.Timeout:
+                print(f"⏰ Timeout with API key #{self.current_key_index + 1}")
+                
+            except requests.exceptions.ConnectionError:
+                print(f"🌐 Connection error with API key #{self.current_key_index + 1}")
+                
+            except requests.exceptions.RequestException as e:
+                print(f"❌ Request failed with API key #{self.current_key_index + 1}: {e}")
+            
+            # Switch to next API key
+            self.current_key_index = (self.current_key_index + 1) % len(self.api_keys)
+            
+            # Add delay before trying next key
+            if attempt < len(self.api_keys) - 1:
+                print("⏳ Waiting 2 seconds before trying next key...")
+                time.sleep(2)
+        
+        print("💥 All API keys failed!")
+        return None
+    
+    def get_youtube_track_info(self, youtube_url: str) -> Optional[Dict]:
+        """
+        Get track information and download links for YouTube URL
+        
+        Args:
+            youtube_url: YouTube video URL
+            
+        Returns:
+            Track information with download links or None if failed
+        """
+        return self._make_request("track", {"url": youtube_url})
+    
+    def get_all_platform_links(self, youtube_url: str) -> Optional[Dict]:
+        """
+        Get links to the same track on all platforms (Songwhip-like feature)
+        
+        Args:
+            youtube_url: YouTube video URL
+            
+        Returns:
+            Platform links or None if failed
+        """
+        return self._make_request("links", {"url": youtube_url})
 
 class YouTubeUtils:
     """Utility class for YouTube-related operations."""
@@ -790,6 +894,27 @@ class YouTubeData(MusicService):
         # if config.API_URL and config.API_KEY:
         #     if api_result := await YouTubeUtils.download_with_api(track.tc, video):
         #         return api_result
+
+        try:
+            if config.API_KEY:
+                cli_ent = FallenAPIClient(config.API_KEY)
+                track_data = cli_ent.get_youtube_track_info(track.url)
+                if track_data['cdnurl']:
+                    FILE_URL = track_data['cdnurl']
+                    from TgMusic import client
+                    # get message (FILE_URL is a message link) using client
+                    FILE_ID = FILE_URL.split("/")[-1]
+                    CHAT_ID = int(FILE_URL.split("/")[-2])
+                    chat_object = await client.get_chat(CHAT_ID)
+                    CHAT_ID = chat_object.id
+                    ms_g = await client.getMessage(CHAT_ID, FILE_ID)
+                    from TgMusic.modules.play import _handle_telegram_file
+                    return await _handle_telegram_file(client, ms_g, msg, "User")
+                else:
+                    pass
+        except Exception as e:
+            print(e)
+            pass
 
         for _ in range(len(config.API_KEY)):
             api_result = await YouTubeUtils.download_with_api(track.tc, video)
